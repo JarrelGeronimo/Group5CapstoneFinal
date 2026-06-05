@@ -1,16 +1,19 @@
 using HRAndApplicantSystem.Database;
 
-public class LoginService
+namespace HRAndApplicantSystem.Login
 {
-    DatabaseHelper db = new DatabaseHelper();
-
-    public bool Login(string username, string password)
+    public class LoginService
     {
-        return db.ValidateLogin(username, password);
-    }
+        DatabaseHelper db = new DatabaseHelper();
 
-    public bool RegisterApplicant(string username, string password)
-    {
-        return db.RegisterApplicant(username, password);
+        public bool Login(string username, string password)
+        {
+            return db.ValidateLogin(username, password);
+        }
+
+        public bool RegisterApplicant(string username, string password)
+        {
+            return db.RegisterApplicant(username, password);
+        }
     }
 }
