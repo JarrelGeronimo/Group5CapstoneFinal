@@ -12,10 +12,4 @@
     <PackageReference Include="System.Data.OleDb" Version="10.0.8" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Database\HRApplicantData.accdb">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

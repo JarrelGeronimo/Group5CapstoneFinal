@@ -10,7 +10,9 @@ namespace HRAndApplicantSystem.Database
 
         public DatabaseHelper()
         {
-            string dbPath = Path.Combine(AppContext.BaseDirectory, "Database", "HRApplicantData.accdb");
+            // Point directly to the source database
+            string projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
+            string dbPath = Path.Combine(projectRoot, "Database", "HRApplicantData.accdb");
             connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
         }
 
@@ -22,13 +24,15 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ? AND [Password] = ? AND [Role] = ?";
+                    // Accept both HRManager and Applicant roles
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ? AND [Password] = ? AND ([Role] = ? OR [Role] = ?)";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
                         cmd.Parameters.Add("@password", OleDbType.VarChar).Value = password;
-                        cmd.Parameters.Add("@role", OleDbType.VarChar).Value = "HRManager";
+                        cmd.Parameters.Add("@role1", OleDbType.VarChar).Value = "HRManager";
+                        cmd.Parameters.Add("@role2", OleDbType.VarChar).Value = "Applicant";
 
                         object result = cmd.ExecuteScalar();
 
