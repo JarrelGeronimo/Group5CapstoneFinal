@@ -1,13 +1,19 @@
 using System;
 using System.Data.OleDb;
+using System.IO;
 
-public class DatabaseHelper
+namespace HRApplicantSystem.Database
 {
-    private static string connectionString =
-        @"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=HRDatabase.accdb;";
-
-    public static OleDbConnection GetConnection()
+    public class DatabaseHelper
     {
-        return new OleDbConnection(connectionString);
+        private static string dbPath = Path.Combine(AppContext.BaseDirectory, "Database", "HRApplicantData.accdb");
+
+        private static string connString =
+            $@"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};";
+
+        public static OleDbConnection GetConnection()
+        {
+            return new OleDbConnection(connString);
+        }
     }
 }
