@@ -24,15 +24,18 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    // Accept both HRManager and Applicant roles
-                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ? AND [Password] = ? AND ([Role] = ? OR [Role] = ?)";
+                    // Accept both Applicant (1) and HRManager (3) roles - using RoleID instead of text
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ? AND [Password] = ? AND ([RoleID] = ? OR [RoleID] = ?)";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
                         cmd.Parameters.Add("@password", OleDbType.VarChar).Value = password;
-                        cmd.Parameters.Add("@role1", OleDbType.VarChar).Value = "HRManager";
-                        cmd.Parameters.Add("@role2", OleDbType.VarChar).Value = "Applicant";
+
+                        cmd.Parameters.Add("@roleId1", OleDbType.Integer).Value = 1;  // Applicant
+                        cmd.Parameters.Add("@roleId1", OleDbType.Integer).Value = 2;  // HR
+                        cmd.Parameters.Add("@roleId1", OleDbType.Integer).Value = 3;  // HRManager
+                        cmd.Parameters.Add("@roleId2", OleDbType.Integer).Value = 4;  // Admin
 
                         object result = cmd.ExecuteScalar();
 
@@ -66,13 +69,14 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "INSERT INTO [Users] ([Username], [Password], [Role]) VALUES (?, ?, ?)";
+                    // Register with RoleID = 1 (Applicant)
+                    string query = "INSERT INTO [Users] ([Username], [Password], [RoleID]) VALUES (?, ?, ?)";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
                         cmd.Parameters.Add("@password", OleDbType.VarChar).Value = password;
-                        cmd.Parameters.Add("@role", OleDbType.VarChar).Value = "Applicant";
+                        cmd.Parameters.Add("@roleId", OleDbType.Integer).Value = 1;  // Applicant
 
                         int rowsAffected = cmd.ExecuteNonQuery();
 
