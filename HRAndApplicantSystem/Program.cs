@@ -1,21 +1,17 @@
-﻿using System;
-using HRApplicantSystem.Database;
+﻿LoginService loginService = new LoginService();
 
-class Program
+Console.Write("Username: ");
+string username = Console.ReadLine();
+
+Console.Write("Password: ");
+string password = Console.ReadLine();
+
+if (loginService.Login(username, password))
 {
-    static void Main()
-    {
-        try
-        {
-            using (var conn = DatabaseHelper.GetConnection())
-            {
-                conn.Open();
-                Console.WriteLine("Database connected successfully!");
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Connection failed: " + ex.Message);
-        }
-    }
+    Console.WriteLine("Login successful!");
+    // go to HR system
+}
+else
+{
+    Console.WriteLine("Invalid credentials.");
 }
