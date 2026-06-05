@@ -16,26 +16,106 @@ namespace HRAndApplicantSystem.Database
 
         public bool ValidateLogin(string username, string password)
         {
-            using (OleDbConnection conn = new OleDbConnection(connectionString))
+            try
             {
-                conn.Open();
-
-                string query = "SELECT COUNT(*) FROM Users WHERE Username = ? AND Password = ? AND Role = ?";
-
-                using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
-                    cmd.Parameters.AddWithValue("?", username);
-                    cmd.Parameters.AddWithValue("?", password);
-                    cmd.Parameters.AddWithValue("?", "HRManager");
+                    conn.Open();
 
-                    object result = cmd.ExecuteScalar();
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ? AND [Password] = ? AND [Role] = ?";
 
-                    if (result == null || result == DBNull.Value)
-                        return false;
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
+                        cmd.Parameters.Add("@password", OleDbType.VarChar).Value = password;
+                        cmd.Parameters.Add("@role", OleDbType.VarChar).Value = "HRManager";
 
-                    int count = Convert.ToInt32(result);
-                    return count > 0;
+                        object result = cmd.ExecuteScalar();
+
+                        if (result == null || result == DBNull.Value)
+                            return false;
+
+                        int count = Convert.ToInt32(result);
+                        return count > 0;
+                    }
                 }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Login validation error: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool RegisterApplicant(string username, string password)
+        {
+            // Check if username already exists
+            if (UsernameExists(username))
+            {
+                Console.WriteLine("Username already exists.");
+                return false;
+            }
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "INSERT INTO [Users] ([Username], [Password], [Role]) VALUES (?, ?, ?)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
+                        cmd.Parameters.Add("@password", OleDbType.VarChar).Value = password;
+                        cmd.Parameters.Add("@role", OleDbType.VarChar).Value = "Applicant";
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+
+                        if (rowsAffected > 0)
+                        {
+                            Console.WriteLine("Account created successfully!");
+                            return true;
+                        }
+                        return false;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error registering applicant: {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool UsernameExists(string username)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = ?";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add("@username", OleDbType.VarChar).Value = username;
+
+                        object result = cmd.ExecuteScalar();
+
+                        if (result == null || result == DBNull.Value)
+                            return false;
+
+                        int count = Convert.ToInt32(result);
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking username: {ex.Message}");
+                return false;
             }
         }
     }

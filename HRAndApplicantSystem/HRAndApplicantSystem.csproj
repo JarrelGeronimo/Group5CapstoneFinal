@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <None Update="Database\HRApplicantData.accdb">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
 

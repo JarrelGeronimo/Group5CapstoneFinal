@@ -8,4 +8,9 @@ public class LoginService
     {
         return db.ValidateLogin(username, password);
     }
+
+    public bool RegisterApplicant(string username, string password)
+    {
+        return db.RegisterApplicant(username, password);
+    }
 }
