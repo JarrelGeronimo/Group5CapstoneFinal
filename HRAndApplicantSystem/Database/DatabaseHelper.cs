@@ -1022,5 +1022,157 @@ namespace HRAndApplicantSystem.Database
 
             return applications;
         }
+            // Schedule Interview 
+        public bool ScheduleInterview(int applicationID, DateTime interviewDateTime,string interviewer, string mode, string location, string scheduledBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Insert into InterviewSchedules
+                    string insertQuery = @"INSERT INTO [InterviewSchedules] 
+                        ([ApplicationID], [InterviewDate], [Interviewer], [Mode], [Location], [Status], [ScheduledBy])
+                        VALUES (@appID, @date, @interviewer, @mode, @location, @status, @scheduledBy)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        cmd.Parameters.AddWithValue("@date", interviewDateTime);
+                        cmd.Parameters.AddWithValue("@interviewer", interviewer);
+                        cmd.Parameters.AddWithValue("@mode", mode);
+                        cmd.Parameters.AddWithValue("@location", location);
+                        cmd.Parameters.AddWithValue("@status", "Scheduled");
+                        cmd.Parameters.AddWithValue("@scheduledBy", scheduledBy);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Update application status to For Interview
+                    string updateQuery = "UPDATE [Applications] SET [Status] = 'For Interview' WHERE [ApplicationID] = @appID";
+                    using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@appID", applicationID);
+                        updateCmd.ExecuteNonQuery();
+                    }
+
+                    // Record status history
+                    RecordStatusChange(applicationID, "For Interview",
+                        $"Interview scheduled on {interviewDateTime:MMMM dd, yyyy HH:mm}", scheduledBy);
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error scheduling interview: {ex.Message}");
+                return false;
+            }
+        }
+
+         // Evaluate Interview 
+        public bool EvaluateInterview(int applicationID, int score, string result,
+            string remarks, string newStatus, string evaluatedBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Insert into InterviewEvaluations
+                    string insertQuery = @"INSERT INTO [InterviewEvaluations]
+                        ([ApplicationID], [Score], [Result], [Remarks], [EvaluatedBy], [DateEvaluated])
+                        VALUES (@appID, @score, @result, @remarks, @evaluatedBy, @dateEvaluated)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        cmd.Parameters.AddWithValue("@score", score);
+                        cmd.Parameters.AddWithValue("@result", result);
+                        cmd.Parameters.AddWithValue("@remarks", remarks);
+                        cmd.Parameters.AddWithValue("@evaluatedBy", evaluatedBy);
+                        cmd.Parameters.AddWithValue("@dateEvaluated", DateTime.Now);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Update interview schedule status to Completed
+                    string updateSchedule = "UPDATE [InterviewSchedules] SET [Status] = 'Completed' WHERE [ApplicationID] = @appID";
+                    using (OleDbCommand schedCmd = new OleDbCommand(updateSchedule, conn))
+                    {
+                        schedCmd.Parameters.AddWithValue("@appID", applicationID);
+                        schedCmd.ExecuteNonQuery();
+                    }
+
+                    // Update application status
+                    string updateApp = "UPDATE [Applications] SET [Status] = @newStatus WHERE [ApplicationID] = @appID";
+                    using (OleDbCommand appCmd = new OleDbCommand(updateApp, conn))
+                    {
+                        appCmd.Parameters.AddWithValue("@newStatus", newStatus);
+                        appCmd.Parameters.AddWithValue("@appID", applicationID);
+                        appCmd.ExecuteNonQuery();
+                    }
+
+                    // Record status history
+                    RecordStatusChange(applicationID, newStatus,
+                        $"Interview evaluated: {result} (Score: {score}/100). {remarks}", evaluatedBy);
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error evaluating interview: {ex.Message}");
+                return false;
+            }
+        }
+
+        // ── Final Hiring Decision ─────────────────────────────────
+        public bool MakeHiringDecision(int applicationID, string decision,
+            string remarks, string decidedBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Insert into HiringDecisions
+                    string insertQuery = @"INSERT INTO [HiringDecisions]
+                        ([ApplicationID], [Decision], [Remarks], [DecidedBy], [DateDecided])
+                        VALUES (@appID, @decision, @remarks, @decidedBy, @dateDecided)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        cmd.Parameters.AddWithValue("@decision", decision);
+                        cmd.Parameters.AddWithValue("@remarks", remarks);
+                        cmd.Parameters.AddWithValue("@decidedBy", decidedBy);
+                        cmd.Parameters.AddWithValue("@dateDecided", DateTime.Now);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Update application status
+                    string updateApp = "UPDATE [Applications] SET [Status] = @decision WHERE [ApplicationID] = @appID";
+                    using (OleDbCommand appCmd = new OleDbCommand(updateApp, conn))
+                    {
+                        appCmd.Parameters.AddWithValue("@decision", decision);
+                        appCmd.Parameters.AddWithValue("@appID", applicationID);
+                        appCmd.ExecuteNonQuery();
+                    }
+
+                    // Record status history
+                    RecordStatusChange(applicationID, decision,
+                        $"Final decision: {decision}. {remarks}", decidedBy);
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error recording hiring decision: {ex.Message}");
+                return false;
+            }
+        }
     }
 }
