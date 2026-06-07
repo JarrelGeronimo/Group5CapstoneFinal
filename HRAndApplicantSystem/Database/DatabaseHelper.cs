@@ -13,9 +13,27 @@ namespace HRAndApplicantSystem.Database
 
         public DatabaseHelper()
         {
-            // Point directly to the source database
-            string projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", ".."));
-            string dbPath = Path.Combine(projectRoot, "Database", "HRApplicantData.accdb");
+            string dbPath = "";
+            
+            // Try multiple strategies to find the database
+            // Strategy 1: Relative to the assembly location (works in VS and VS Code)
+            string assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "";
+            dbPath = Path.Combine(assemblyDir, "..", "..", "..", "Database", "HRApplicantData.accdb");
+            dbPath = Path.GetFullPath(dbPath);
+            
+            if (!File.Exists(dbPath))
+            {
+                // Strategy 2: Try from current working directory
+                dbPath = Path.Combine(Directory.GetCurrentDirectory(), "Database", "HRApplicantData.accdb");
+            }
+            
+            if (!File.Exists(dbPath))
+            {
+                // Strategy 3: Try one more level up
+                dbPath = Path.Combine(assemblyDir, "..", "..", "..", "..", "Database", "HRApplicantData.accdb");
+                dbPath = Path.GetFullPath(dbPath);
+            }
+            
             connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
         }
 

@@ -54,7 +54,7 @@ One of the most important tables.
 ApplicationID (PK)
 ApplicantID (FK)
 JobID (FK)
-ApplicationStatus
+Status
 DateApplied
 
 Example status:
