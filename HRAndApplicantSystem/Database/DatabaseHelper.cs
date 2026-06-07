@@ -590,7 +590,7 @@ namespace HRAndApplicantSystem.Database
             return requirements;
         }
 
-        public bool SubmitApplicantDocument(int applicantID, int requirementTypeID, string remarks, string documentStatus = "Submitted")
+        public bool SubmitApplicantDocument(int applicantID, int jobID, int requirementTypeID, string remarks, string documentStatus = "Submitted")
         {
             try
             {
@@ -598,12 +598,13 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    // Check if document already exists
-                    string checkQuery = "SELECT [DocumentID] FROM [ApplicantDocuments] WHERE [ApplicantID] = @applicantID AND [RequirementTypeID] = @requirementTypeID";
+                    // Check if document already exists for this job
+                    string checkQuery = "SELECT [DocumentID] FROM [ApplicantDocuments] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [RequirementTypeID] = @requirementTypeID";
 
                     using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
                     {
                         checkCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        checkCmd.Parameters.AddWithValue("@jobID", jobID);
                         checkCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
 
                         object result = checkCmd.ExecuteScalar();
@@ -611,13 +612,14 @@ namespace HRAndApplicantSystem.Database
                         if (result != null && result != DBNull.Value)
                         {
                             // Update existing document
-                            string updateQuery = "UPDATE [ApplicantDocuments] SET [DocumentStatus] = @status, [Remarks] = @remarks WHERE [ApplicantID] = @applicantID AND [RequirementTypeID] = @requirementTypeID";
+                            string updateQuery = "UPDATE [ApplicantDocuments] SET [DocumentStatus] = @status, [Remarks] = @remarks WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [RequirementTypeID] = @requirementTypeID";
 
                             using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
                             {
                                 updateCmd.Parameters.AddWithValue("@status", documentStatus);
                                 updateCmd.Parameters.AddWithValue("@remarks", remarks);
                                 updateCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                                updateCmd.Parameters.AddWithValue("@jobID", jobID);
                                 updateCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
 
                                 int rowsAffected = updateCmd.ExecuteNonQuery();
@@ -627,11 +629,12 @@ namespace HRAndApplicantSystem.Database
                     }
 
                     // Insert new document
-                    string insertQuery = "INSERT INTO [ApplicantDocuments] ([ApplicantID], [RequirementTypeID], [DocumentStatus], [Remarks]) VALUES (@applicantID, @requirementTypeID, @status, @remarks)";
+                    string insertQuery = "INSERT INTO [ApplicantDocuments] ([ApplicantID], [JobID], [RequirementTypeID], [DocumentStatus], [Remarks]) VALUES (@applicantID, @jobID, @requirementTypeID, @status, @remarks)";
 
                     using (OleDbCommand insertCmd = new OleDbCommand(insertQuery, conn))
                     {
                         insertCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        insertCmd.Parameters.AddWithValue("@jobID", jobID);
                         insertCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
                         insertCmd.Parameters.AddWithValue("@status", documentStatus);
                         insertCmd.Parameters.AddWithValue("@remarks", remarks);
@@ -648,7 +651,7 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
-        public List<dynamic> GetApplicantDocuments(int applicantID)
+        public List<dynamic> GetApplicantDocuments(int applicantID, int jobID)
         {
             List<dynamic> documents = new List<dynamic>();
 
@@ -666,12 +669,13 @@ namespace HRAndApplicantSystem.Database
                                         ad.[Remarks]
                                     FROM [ApplicantDocuments] ad
                                     INNER JOIN [RequirementTypes] rt ON ad.[RequirementTypeID] = rt.[RequirementTypeID]
-                                    WHERE ad.[ApplicantID] = @applicantID
+                                    WHERE ad.[ApplicantID] = @applicantID AND ad.[JobID] = @jobID
                                     ORDER BY rt.[RequirementName]";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        cmd.Parameters.AddWithValue("@jobID", jobID);
 
                         using (OleDbDataReader reader = cmd.ExecuteReader())
                         {
@@ -697,6 +701,326 @@ namespace HRAndApplicantSystem.Database
             }
 
             return documents;
+        }
+
+        public List<dynamic> GetPendingApplicationsForScreening()
+        {
+            List<dynamic> applications = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID], 
+                                           [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name], 
+                                           [Applicants].[Last Name], [Applicants].[ContactNo], [JobVacancies].[JobTitle]
+                                    FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                    INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                    WHERE [Applications].[Status] = 'Submitted'
+                                    ORDER BY [Applications].[DateApplied]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic app = new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader[0]),
+                                    ApplicantID = Convert.ToInt32(reader[1]),
+                                    JobID = Convert.ToInt32(reader[2]),
+                                    Status = reader[3]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader[4]),
+                                    FirstName = reader[5]?.ToString() ?? "",
+                                    LastName = reader[6]?.ToString() ?? "",
+                                    ContactNo = reader[7]?.ToString() ?? "",
+                                    JobTitle = reader[8]?.ToString() ?? ""
+                                };
+                                applications.Add(app);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving pending applications: {ex.Message}");
+            }
+
+            return applications;
+        }
+
+        public dynamic GetApplicationDetailsForScreening(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
+                                           [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name],
+                                           [Applicants].[Last Name], [Applicants].[ContactNo], [Applicants].[Address],
+                                           [Applicants].[Education], [Applicants].[Skills], [JobVacancies].[JobTitle],
+                                           [JobVacancies].[JobDetail]
+                                    FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                    INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                    WHERE [Applications].[ApplicationID] = @applicationID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicationID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader[0]),
+                                    ApplicantID = Convert.ToInt32(reader[1]),
+                                    JobID = Convert.ToInt32(reader[2]),
+                                    Status = reader[3]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader[4]),
+                                    FirstName = reader[5]?.ToString() ?? "",
+                                    LastName = reader[6]?.ToString() ?? "",
+                                    ContactNo = reader[7]?.ToString() ?? "",
+                                    Address = reader[8]?.ToString() ?? "",
+                                    Education = reader[9]?.ToString() ?? "",
+                                    Skills = reader[10]?.ToString() ?? "",
+                                    JobTitle = reader[11]?.ToString() ?? "",
+                                    JobDetail = reader[12]?.ToString() ?? ""
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving application details: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        public bool ScreenApplication(int applicationID, string result, string remarks, string hrUsername)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Determine new status based on screening result
+                    string newStatus = result == "Qualified" ? "Shortlisted" : "Rejected";
+
+                    // Update application status
+                    string updateQuery = "UPDATE [Applications] SET [Status] = @newStatus WHERE [ApplicationID] = @applicationID";
+
+                    using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
+                    {
+                        updateCmd.Parameters.AddWithValue("@newStatus", newStatus);
+                        updateCmd.Parameters.AddWithValue("@applicationID", applicationID);
+
+                        int rowsAffected = updateCmd.ExecuteNonQuery();
+                        if (rowsAffected == 0) return false;
+                    }
+
+                    // Record screening result
+                    string screeningQuery = "INSERT INTO [ScreeningResults] ([ApplicationID], [Result], [Remarks], [ScreenedBy], [DateScreened]) VALUES (@appID, @result, @remarks, @screenedBy, @dateScreened)";
+
+                    using (OleDbCommand screenCmd = new OleDbCommand(screeningQuery, conn))
+                    {
+                        screenCmd.Parameters.AddWithValue("@appID", applicationID);
+                        screenCmd.Parameters.AddWithValue("@result", result);
+                        screenCmd.Parameters.AddWithValue("@remarks", remarks);
+                        screenCmd.Parameters.AddWithValue("@screenedBy", hrUsername);
+                        screenCmd.Parameters.AddWithValue("@dateScreened", DateTime.Now);
+
+                        screenCmd.ExecuteNonQuery();
+                    }
+
+                    // Record status history
+                    RecordStatusChange(applicationID, "Under Review", $"Screened by HR: {result}", hrUsername);
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error screening application: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool UpdateApplicationStatus(int applicationID, string newStatus, string remarks, string changedBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "UPDATE [Applications] SET [Status] = @newStatus WHERE [ApplicationID] = @applicationID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@newStatus", newStatus);
+                        cmd.Parameters.AddWithValue("@applicationID", applicationID);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        
+                        if (rowsAffected > 0)
+                        {
+                            RecordStatusChange(applicationID, newStatus, remarks, changedBy);
+                            return true;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating application status: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        public bool RecordStatusChange(int applicationID, string status, string remarks, string changedBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "INSERT INTO [ApplicationStatusHistory] ([ApplicationID], [Status], [Remarks], [DateChanged], [ChangedBy]) VALUES (@appID, @status, @remarks, @dateChanged, @changedBy)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        cmd.Parameters.AddWithValue("@status", status);
+                        cmd.Parameters.AddWithValue("@remarks", remarks);
+                        cmd.Parameters.AddWithValue("@dateChanged", DateTime.Now);
+                        cmd.Parameters.AddWithValue("@changedBy", changedBy);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error recording status change: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        public List<dynamic> GetApplicationsByStatus(string status)
+        {
+            List<dynamic> applications = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
+                                           [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name],
+                                           [Applicants].[Last Name], [JobVacancies].[JobTitle]
+                                    FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                    INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                    WHERE [Applications].[Status] = @status
+                                    ORDER BY [Applications].[DateApplied]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@status", status);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic app = new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader[0]),
+                                    ApplicantID = Convert.ToInt32(reader[1]),
+                                    JobID = Convert.ToInt32(reader[2]),
+                                    Status = reader[3]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader[4]),
+                                    FirstName = reader[5]?.ToString() ?? "",
+                                    LastName = reader[6]?.ToString() ?? "",
+                                    JobTitle = reader[7]?.ToString() ?? ""
+                                };
+                                applications.Add(app);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applications by status: {ex.Message}");
+            }
+
+            return applications;
+        }
+
+        public List<dynamic> GetApplicationsByJob(int jobID)
+        {
+            List<dynamic> applications = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
+                                           [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name],
+                                           [Applicants].[Last Name], [JobVacancies].[JobTitle]
+                                    FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                    INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                    WHERE [Applications].[JobID] = @jobID
+                                    ORDER BY [Applications].[DateApplied]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@jobID", jobID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic app = new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader[0]),
+                                    ApplicantID = Convert.ToInt32(reader[1]),
+                                    JobID = Convert.ToInt32(reader[2]),
+                                    Status = reader[3]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader[4]),
+                                    FirstName = reader[5]?.ToString() ?? "",
+                                    LastName = reader[6]?.ToString() ?? "",
+                                    JobTitle = reader[7]?.ToString() ?? ""
+                                };
+                                applications.Add(app);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applications by job: {ex.Message}");
+            }
+
+            return applications;
         }
     }
 }

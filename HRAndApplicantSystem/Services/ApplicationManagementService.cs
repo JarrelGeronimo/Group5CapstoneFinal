@@ -183,6 +183,19 @@ namespace HRAndApplicantSystem.Services
 
         private void ManageApplicationDocuments(Application application)
         {
+            // Check if application is still editable (Pending or Submitted status)
+            if (application.ApplicationStatus != "Pending" && application.ApplicationStatus != "Submitted")
+            {
+                Console.Clear();
+                Console.WriteLine("╔══════════════════════════════════════════════╗");
+                Console.WriteLine("║     DOCUMENT MANAGEMENT                      ║");
+                Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+                Console.WriteLine("Your application is currently under review or has been decided.");
+                Console.WriteLine("You cannot edit your document submissions once HR has started reviewing your application.\n");
+                Console.WriteLine("Current Status: " + application.ApplicationStatus);
+                return;
+            }
+
             DocumentSubmissionService docService = new DocumentSubmissionService();
             docService.ManageDocumentSubmissions(application.ApplicantID, application.JobID);
         }

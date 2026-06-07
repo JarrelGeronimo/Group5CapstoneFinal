@@ -13,7 +13,7 @@ while (running)
 {
     Console.WriteLine("\n=== HR and Applicant System ===");
     Console.WriteLine("1. Login");
-    Console.WriteLine("2. Register as Applicant");
+    Console.WriteLine("2. Register an Account");
     Console.WriteLine("3. Exit");
     Console.Write("Choose an option: ");
 
@@ -55,15 +55,20 @@ static void HandleLogin(LoginService loginService)
             Console.WriteLine("\nWelcome Applicant!");
             ShowApplicantDashboard(username);
         }
-        else if (roleId == (int)UserRole.HR || roleId == (int)UserRole.HRManager)
+        else if (roleId == (int)UserRole.HR)
         {
             Console.WriteLine("\nWelcome HR Staff!");
-            // TODO: Show HR dashboard
+            ShowHRDashboard(username);
+        }
+        else if (roleId == (int)UserRole.HRManager)
+        {
+            Console.WriteLine("\nWelcome HR Manager!");
+            ShowHRDashboard(username);
         }
         else if (roleId == (int)UserRole.Admin)
         {
             Console.WriteLine("\nWelcome Admin!");
-            // TODO: Show Admin dashboard
+            ShowHRDashboard(username);
         }
     }
     else
@@ -95,6 +100,12 @@ static void ShowApplicantDashboard(string username)
         ApplicantDashboardService dashboardService = new ApplicantDashboardService();
         dashboardService.ShowDashboard(applicant, username);
     }
+}
+
+static void ShowHRDashboard(string hrUsername)
+{
+    HRAndApplicantSystem.Services.HRDashboardService hrDashboard = new HRAndApplicantSystem.Services.HRDashboardService();
+    hrDashboard.ShowDashboard(hrUsername);
 }
 
 static void HandleRegistration(LoginService loginService)

@@ -36,7 +36,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine(new string('-', 55));
 
             // Display requirements and check submission status
-            var existingDocs = db.GetApplicantDocuments(applicantID);
+            var existingDocs = db.GetApplicantDocuments(applicantID, jobID);
             for (int i = 0; i < requirements.Count; i++)
             {
                 var req = requirements[i];
@@ -62,10 +62,10 @@ namespace HRAndApplicantSystem.Services
                 switch (choice)
                 {
                     case "1":
-                        SubmitDocument(applicantID, requirements);
+                        SubmitDocument(applicantID, jobID, requirements);
                         break;
                     case "2":
-                        ViewDocumentSubmissions(applicantID);
+                        ViewDocumentSubmissions(applicantID, jobID);
                         break;
                     case "3":
                         managing = false;
@@ -78,7 +78,7 @@ namespace HRAndApplicantSystem.Services
             }
         }
 
-        private void SubmitDocument(int applicantID, List<dynamic> requirements)
+        private void SubmitDocument(int applicantID, int jobID, List<dynamic> requirements)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -104,7 +104,7 @@ namespace HRAndApplicantSystem.Services
                 string remarks = Console.ReadLine()?.Trim() ?? "";
 
                 // Save as Submitted (applicant can provide remarks/description)
-                if (db.SubmitApplicantDocument(applicantID, selectedReq.RequirementTypeID, remarks, "Submitted"))
+                if (db.SubmitApplicantDocument(applicantID, jobID, selectedReq.RequirementTypeID, remarks, "Submitted"))
                 {
                     Console.WriteLine($"\n✓ Document submitted: {selectedReq.RequirementName}");
                     Console.WriteLine("You can update this document later if needed.");
@@ -119,14 +119,14 @@ namespace HRAndApplicantSystem.Services
             }
         }
 
-        private void ViewDocumentSubmissions(int applicantID)
+        private void ViewDocumentSubmissions(int applicantID, int jobID)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
             Console.WriteLine("║     MY DOCUMENT SUBMISSIONS                  ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var documents = db.GetApplicantDocuments(applicantID);
+            var documents = db.GetApplicantDocuments(applicantID, jobID);
 
             if (documents.Count == 0)
             {
