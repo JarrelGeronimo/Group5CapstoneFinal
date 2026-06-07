@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -6,15 +7,22 @@ namespace HRAndApplicantSystem.Services
     {
         private readonly DatabaseHelper db;
         private readonly ScreeningService screeningService;
+        private readonly InterviewService interviewService;
+        private readonly HiringDecisionService hiringDecisionService;
 
         public HRDashboardService()
         {
             db = new DatabaseHelper();
             screeningService = new ScreeningService();
+            interviewService = new InterviewService();
+            hiringDecisionService = new HiringDecisionService();  
         }
 
         public void ShowDashboard(string hrUsername)
         {
+            int roleId = db.GetUserRoleByUsername(hrUsername);
+            bool isManagerOrAdmin = roleId == RoleConstants.HR_MANAGER || roleId == RoleConstants.ADMIN;
+
             bool running = true;
             while (running)
             {
@@ -23,42 +31,72 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("║     HR SCREENING DASHBOARD                   ║");
                 Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-                Console.WriteLine("Welcome, HR Staff!\n");
-                Console.WriteLine("1. Screen Pending Applications");
-                Console.WriteLine("2. View All Applications");
-                Console.WriteLine("3. Filter Applications by Job");
-                Console.WriteLine("4. Filter Applications by Status");
-                Console.WriteLine("5. Logout");
-                Console.Write("\nChoose an option: ");
+                 string role = roleId == RoleConstants.HR_MANAGER ? "HR Manager"
+                            : roleId == RoleConstants.ADMIN ? "Admin"
+                            : "HR Staff";
+                Console.WriteLine($"Welcome, {role}!\n");
 
+                 Console.WriteLine("1. Screen Pending Applications");
+                Console.WriteLine("2. Interview Management");
+                Console.WriteLine("3. View All Applications");
+                Console.WriteLine("4. Filter Applications by Job");
+                Console.WriteLine("5. Filter Applications by Status");
+
+                if (isManagerOrAdmin)
+                {
+                    Console.WriteLine("6. Hiring Decision (Accept / Reject)");
+                    Console.WriteLine("7. Logout");
+                }
+                else
+                {
+                    Console.WriteLine("6. Logout");
+                }
+
+                Console.Write("\nChoose an option: ");
                 string choice = Console.ReadLine()?.Trim() ?? string.Empty;
 
-                switch (choice)
+                if (isManagerOrAdmin)
                 {
-                    case "1":
-                        ScreenPendingApplications(hrUsername);
-                        break;
-                    case "2":
-                        ViewAllApplications();
-                        break;
-                    case "3":
-                        FilterApplicationsByJob();
-                        break;
-                    case "4":
-                        FilterApplicationsByStatus();
-                        break;
-                    case "5":
-                        running = false;
-                        Console.WriteLine("\nLogging out...");
-                        break;
-                    default:
-                        Console.WriteLine("Invalid option. Please try again.");
-                        System.Threading.Thread.Sleep(2000);
-                        break;
+                    switch (choice)
+                    {
+                        case "1": ScreenPendingApplications(hrUsername); break;
+                        case "2": interviewService.ShowInterviewMenu(hrUsername); break;
+                        case "3": ViewAllApplications(); break;
+                        case "4": FilterApplicationsByJob(); break;
+                        case "5": FilterApplicationsByStatus(); break;
+                        case "6": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
+                        case "7":
+                            running = false;
+                            Console.WriteLine("\nLogging out...");
+                            break;
+                        default:
+                            Console.WriteLine("Invalid option. Please try again.");
+                            System.Threading.Thread.Sleep(1500);
+                            break;
+                    }
+                }
+                    else
+                {
+                    switch (choice)
+                    {
+                        case "1": ScreenPendingApplications(hrUsername); break;
+                        case "2": interviewService.ShowInterviewMenu(hrUsername); break;
+                        case "3": ViewAllApplications(); break;
+                        case "4": FilterApplicationsByJob(); break;
+                        case "5": FilterApplicationsByStatus(); break;
+                        case "6":
+                            running = false;
+                            Console.WriteLine("\nLogging out...");
+                            break;
+                        default:
+                            Console.WriteLine("Invalid option. Please try again.");
+                            System.Threading.Thread.Sleep(1500);
+                            break;
+                    }
                 }
             }
         }
-
+ 
         private void ScreenPendingApplications(string hrUsername)
         {
             Console.Clear();
@@ -106,17 +144,26 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     ALL APPLICATIONS                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var allApps = db.GetApplicationsByStatus("Submitted");
-            var shortlistedApps = db.GetApplicationsByStatus("Shortlisted");
-            var rejectedApps = db.GetApplicationsByStatus("Rejected");
+            var submitted     = db.GetApplicationsByStatus("Submitted");
+            var shortlisted   = db.GetApplicationsByStatus("Shortlisted");
+            var forInterview  = db.GetApplicationsByStatus("For Interview");
+            var forFinalReview= db.GetApplicationsByStatus("For Final Review");
+            var accepted      = db.GetApplicationsByStatus("Accepted");
+            var rejected      = db.GetApplicationsByStatus("Rejected");
 
-            Console.WriteLine($"Submitted: {allApps.Count}");
-            Console.WriteLine($"Shortlisted: {shortlistedApps.Count}");
-            Console.WriteLine($"Rejected: {rejectedApps.Count}\n");
+            Console.WriteLine($"Submitted       : {submitted.Count}");
+            Console.WriteLine($"Shortlisted     : {shortlisted.Count}");
+            Console.WriteLine($"For Interview   : {forInterview.Count}");
+            Console.WriteLine($"For Final Review: {forFinalReview.Count}");
+            Console.WriteLine($"Accepted        : {accepted.Count}");
+            Console.WriteLine($"Rejected        : {rejected.Count}\n");
 
-            DisplayApplicationsList(allApps, "Submitted");
-            DisplayApplicationsList(shortlistedApps, "Shortlisted");
-            DisplayApplicationsList(rejectedApps, "Rejected");
+            DisplayApplicationsList(submitted,      "Submitted");
+            DisplayApplicationsList(shortlisted,    "Shortlisted");
+            DisplayApplicationsList(forInterview,   "For Interview");
+            DisplayApplicationsList(forFinalReview, "For Final Review");
+            DisplayApplicationsList(accepted,       "Accepted");
+            DisplayApplicationsList(rejected,       "Rejected");
 
             Console.WriteLine("\nPress any key to return...");
             Console.ReadKey();
@@ -169,13 +216,15 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     FILTER BY STATUS                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            Console.WriteLine("Select a status:\n");
             Console.WriteLine("1. Submitted");
             Console.WriteLine("2. Under Review");
             Console.WriteLine("3. Shortlisted");
-            Console.WriteLine("4. Rejected");
-            Console.WriteLine("5. Accepted");
-            Console.WriteLine("6. Back");
+            Console.WriteLine("4. For Interview");
+            Console.WriteLine("5. For Final Review");
+            Console.WriteLine("6. Accepted");
+            Console.WriteLine("7. Rejected");
+            Console.WriteLine("8. Back");
+            
 
             Console.Write("\nChoose option: ");
 
@@ -185,8 +234,10 @@ namespace HRAndApplicantSystem.Services
                 "1" => "Submitted",
                 "2" => "Under Review",
                 "3" => "Shortlisted",
-                "4" => "Rejected",
-                "5" => "Accepted",
+                "4" => "For Interview",
+                "5" => "For Final Review",
+                "6" => "Accepted",
+                "7" => "Rejected",
                 _ => null
             };
 
