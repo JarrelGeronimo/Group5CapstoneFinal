@@ -115,14 +115,106 @@ namespace HRAndApplicantSystem.Applicant
             return db.UpdateApplicantInfo(username, applicant);
         }
 
+        public void BrowseJobVacancies(Applicant applicant)
+        {
+            if (applicant == null || applicant.ApplicantID <= 0)
+            {
+                Console.WriteLine("Error: Applicant information not found.");
+                return;
+            }
+
+            while (true)
+            {
+                Console.WriteLine("\n=== Browse Job Vacancies ===\n");
+
+                var vacancies = db.GetAllJobVacancies();
+
+                if (vacancies.Count == 0)
+                {
+                    Console.WriteLine("No job vacancies available at this time.");
+                    break;
+                }
+
+                for (int i = 0; i < vacancies.Count; i++)
+                {
+                    var job = vacancies[i];
+                    Console.WriteLine($"\n{i + 1}. {job.JobTitle}");
+                    Console.WriteLine($"   Job ID: {job.JobID}");
+                    Console.WriteLine($"   Details: {job.JobDetail}");
+                    Console.WriteLine($"   Available Slots: {job.JobSlots}");
+                    Console.WriteLine($"   Status: {(job.JobSlots > 0 ? "Open" : "Closed")}");
+                }
+
+                Console.WriteLine($"\n{vacancies.Count + 1}. Back to Dashboard");
+                Console.Write("\nSelect a job to apply or choose option to go back: ");
+
+                if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= vacancies.Count)
+                {
+                    var selectedJob = vacancies[choice - 1];
+                    Console.Write($"\nDo you want to apply for {selectedJob.JobTitle}? (yes/no): ");
+                    string confirm = Console.ReadLine()?.ToLower();
+
+                    if (confirm == "yes" || confirm == "y")
+                    {
+                        if (db.SubmitJobApplication(applicant.ApplicantID, selectedJob.JobID))
+                        {
+                            Console.WriteLine($"✓ Successfully applied for {selectedJob.JobTitle}!");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Failed to submit application. You may have already applied for this job.");
+                        }
+                    }
+                }
+                else if (choice == vacancies.Count + 1)
+                {
+                    break;
+                }
+                else
+                {
+                    Console.WriteLine("Invalid selection. Please try again.");
+                }
+            }
+        }
+
+        public void ViewMyApplications(Applicant applicant)
+        {
+            if (applicant == null || applicant.ApplicantID <= 0)
+            {
+                Console.WriteLine("Error: Applicant information not found.");
+                return;
+            }
+
+            Console.WriteLine("\n=== My Applications ===\n");
+
+            var applications = db.GetApplicantApplications(applicant.ApplicantID);
+
+            if (applications.Count == 0)
+            {
+                Console.WriteLine("You haven't applied for any jobs yet.");
+                return;
+            }
+
+            Console.WriteLine($"{"Job Title",-40} {"Status",-15} {"Date Applied",-20}");
+            Console.WriteLine(new string('-', 75));
+
+            foreach (var app in applications)
+            {
+                string dateApplied = app.DateApplied.ToString("yyyy-MM-dd HH:mm");
+                Console.WriteLine($"{app.JobTitle,-40} {app.Status,-15} {dateApplied,-20}");
+            }
+
+            Console.WriteLine();
+        }
+
         public void ApplyForJob()
         {
-            // TODO: Implement job application functionality
+            // This method is now replaced by BrowseJobVacancies()
         }
 
         public void GetApplications()
         {
-            // TODO: Implement getting applicant's applications
+            // This method is now replaced by ViewMyApplications()
         }
 
         public bool HasExistingApplication()

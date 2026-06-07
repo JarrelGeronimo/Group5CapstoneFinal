@@ -119,10 +119,10 @@ static void ShowApplicantDashboard(string username)
                     applicant = appService.GetApplicantInfo(username);
                     break;
                 case "3":
-                    Console.WriteLine("\n(Browse Job Vacancies - Coming soon!)");
+                    appService.BrowseJobVacancies(applicant);
                     break;
                 case "4":
-                    Console.WriteLine("\n(View My Applications - Coming soon!)");
+                    appService.ViewMyApplications(applicant);
                     break;
                 case "5":
                     dashboardRunning = false;
