@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Models;
 
-namespace HRAndApplicantSystem.Applicant
+namespace HRAndApplicantSystem.Services
 {
     public class ApplicationService
     {

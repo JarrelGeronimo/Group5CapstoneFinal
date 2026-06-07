@@ -1,4 +1,4 @@
-namespace HRAndApplicantSystem.Applicant
+namespace HRAndApplicantSystem.Models
 {
     public class Applicant
     {

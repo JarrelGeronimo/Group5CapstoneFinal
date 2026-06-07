@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Data.OleDb;
+using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Database
 {
@@ -124,7 +125,7 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
-        public bool SaveApplicantInfo(string username, HRAndApplicantSystem.Applicant.Applicant applicant)
+        public bool SaveApplicantInfo(string username, Applicant applicant)
         {
             try
             {
@@ -180,7 +181,7 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
-        public HRAndApplicantSystem.Applicant.Applicant GetApplicantByUsername(string username)
+        public Applicant GetApplicantByUsername(string username)
         {
             try
             {
@@ -206,7 +207,7 @@ namespace HRAndApplicantSystem.Database
                         {
                             if (reader.Read())
                             {
-                                return new HRAndApplicantSystem.Applicant.Applicant
+                                return new Applicant
                                 {
                                     ApplicantID = reader["ApplicantID"] != DBNull.Value ? Convert.ToInt32(reader["ApplicantID"]) : 0,
                                     Username = username,
@@ -232,7 +233,7 @@ namespace HRAndApplicantSystem.Database
             return null;
         }
 
-        public bool UpdateApplicantInfo(string username, HRAndApplicantSystem.Applicant.Applicant applicant)
+        public bool UpdateApplicantInfo(string username, Applicant applicant)
         {
             try
             {
@@ -387,8 +388,13 @@ namespace HRAndApplicantSystem.Database
 
                     using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
                     {
-                        checkCmd.Parameters.AddWithValue("@applicantID", applicantID);
-                        checkCmd.Parameters.AddWithValue("@jobID", jobID);
+                        OleDbParameter applicantParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantParam.Value = applicantID;
+                        checkCmd.Parameters.Add(applicantParam);
+
+                        OleDbParameter jobParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobParam.Value = jobID;
+                        checkCmd.Parameters.Add(jobParam);
 
                         int count = Convert.ToInt32(checkCmd.ExecuteScalar());
                         if (count > 0)
@@ -403,10 +409,21 @@ namespace HRAndApplicantSystem.Database
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
-                        cmd.Parameters.AddWithValue("@jobID", jobID);
-                        cmd.Parameters.AddWithValue("@status", "Applied");
-                        cmd.Parameters.AddWithValue("@dateApplied", DateTime.Now);
+                        OleDbParameter applicantInsertParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantInsertParam.Value = applicantID;
+                        cmd.Parameters.Add(applicantInsertParam);
+
+                        OleDbParameter jobInsertParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobInsertParam.Value = jobID;
+                        cmd.Parameters.Add(jobInsertParam);
+
+                        OleDbParameter statusParam = new OleDbParameter("@status", OleDbType.VarWChar);
+                        statusParam.Value = "Applied";
+                        cmd.Parameters.Add(statusParam);
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@dateApplied", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;

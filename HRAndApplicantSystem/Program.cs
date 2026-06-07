@@ -1,7 +1,8 @@
 ﻿using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Login;
-using ApplicantModel = HRAndApplicantSystem.Applicant.Applicant;
-using ApplicationServiceNS = HRAndApplicantSystem.Applicant.ApplicationService;
+using HRAndApplicantSystem.Models;
+using ApplicantModel = HRAndApplicantSystem.Models.Applicant;
+using ApplicationServiceNS = HRAndApplicantSystem.Services.ApplicationService;
 
 LoginService loginService = new LoginService();
 bool running = true;
