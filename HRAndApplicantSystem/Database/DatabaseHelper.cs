@@ -1192,5 +1192,84 @@ namespace HRAndApplicantSystem.Database
                 return false;
             }
         }
+        // ── JOB VACANCY MANAGEMENT METHODS ───────────────────────
+        public bool CreateJobVacancy(JobVacancy job)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "INSERT INTO [JobVacancies] ([JobTitle], [JobDetail], [Status]) VALUES (@title, @detail, @status)";
+                    
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@title", job.JobTitle ?? "");
+                        cmd.Parameters.AddWithValue("@detail", job.JobDetail ?? "");
+                        cmd.Parameters.AddWithValue("@status", job.Status ?? "Open");
+                        
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating job vacancy: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool UpdateJobVacancy(JobVacancy job)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "UPDATE [JobVacancies] SET [JobTitle] = @title, [JobDetail] = @detail, [Status] = @status WHERE [JobID] = @id";
+                    
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@title", job.JobTitle ?? "");
+                        cmd.Parameters.AddWithValue("@detail", job.JobDetail ?? "");
+                        cmd.Parameters.AddWithValue("@status", job.Status ?? "Open");
+                        cmd.Parameters.AddWithValue("@id", job.JobID);
+                        
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating job vacancy: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool DeleteJobVacancy(int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "DELETE FROM [JobVacancies] WHERE [JobID] = @id";
+                    
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", jobID);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting job vacancy: {ex.Message}");
+                return false;
+           }
+        }
     }
 }
