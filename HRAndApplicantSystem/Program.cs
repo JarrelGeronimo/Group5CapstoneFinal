@@ -2,6 +2,7 @@
 using HRAndApplicantSystem.Login;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
+using HRAndApplicantSystem.Services;
 using ApplicantModel = HRAndApplicantSystem.Models.Applicant;
 using ApplicationServiceNS = HRAndApplicantSystem.Services.ApplicationService;
 
@@ -90,72 +91,9 @@ static void ShowApplicantDashboard(string username)
 
     if (applicant != null)
     {
-        Console.WriteLine($"\nWelcome back, {applicant.FirstName} {applicant.LastName}!");
-        
-        bool dashboardRunning = true;
-        while (dashboardRunning)
-        {
-            Console.WriteLine("\n=== Applicant Dashboard ===");
-            Console.WriteLine("1. View Profile");
-            Console.WriteLine("2. Update Profile");
-            Console.WriteLine("3. Browse Job Vacancies");
-            Console.WriteLine("4. View My Applications");
-            Console.WriteLine("5. Logout");
-            Console.Write("Choose an option: ");
-
-            string choice = Console.ReadLine()?.Trim() ?? string.Empty;
-
-            switch (choice)
-            {
-                case "1":
-                    // Fetch fresh data from database
-                    applicant = appService.GetApplicantInfo(username);
-                    ViewApplicantProfile(applicant);
-                    break;
-                case "2":
-                    UpdateApplicantProfile(username, appService);
-                    // Refresh the applicant data after update
-                    applicant = appService.GetApplicantInfo(username);
-                    break;
-                case "3":
-                    appService.BrowseJobVacancies(applicant);
-                    break;
-                case "4":
-                    appService.ViewMyApplications(applicant);
-                    break;
-                case "5":
-                    dashboardRunning = false;
-                    Console.WriteLine("Logging out...");
-                    break;
-                default:
-                    Console.WriteLine("Invalid option. Please try again.");
-                    break;
-            }
-        }
-    }
-}
-
-static void ViewApplicantProfile(ApplicantModel applicant)
-{
-    Console.WriteLine("\n=== Your Profile ===");
-    Console.WriteLine($"Name: {applicant.FirstName} {applicant.LastName}");
-    Console.WriteLine($"Contact: {applicant.ContactNo}");
-    Console.WriteLine($"Address: {applicant.Address}");
-    Console.WriteLine($"Education: {applicant.Education}");
-    Console.WriteLine($"Skills: {applicant.Skills}");
-}
-
-static void UpdateApplicantProfile(string username, ApplicationServiceNS appService)
-{
-    // Get the existing applicant info first
-    ApplicantModel existingApplicant = appService.GetApplicantInfo(username);
-    if (existingApplicant != null)
-    {
-        appService.UpdateApplicantProfile(username, existingApplicant);
-    }
-    else
-    {
-        Console.WriteLine("No existing profile found. Please complete your profile first.");
+        // Use the new ApplicantDashboardService
+        ApplicantDashboardService dashboardService = new ApplicantDashboardService();
+        dashboardService.ShowDashboard(applicant, username);
     }
 }
 

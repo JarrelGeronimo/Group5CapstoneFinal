@@ -464,7 +464,7 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(jobInsertParam);
 
                         OleDbParameter statusParam = new OleDbParameter("@status", OleDbType.VarWChar);
-                        statusParam.Value = "Applied";
+                        statusParam.Value = "Submitted";
                         cmd.Parameters.Add(statusParam);
                         
                         OleDbParameter dateParam = new OleDbParameter("@dateApplied", OleDbType.Date);

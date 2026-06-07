@@ -11,5 +11,7 @@
         public string Remarks { get; set; }
 
         public DateTime DateChanged { get; set; }
+
+        public string ChangedBy { get; set; } // Username or UserID who made the change
     }
 }
