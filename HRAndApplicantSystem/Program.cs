@@ -1,6 +1,7 @@
 ﻿using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Login;
 using HRAndApplicantSystem.Models;
+using HRAndApplicantSystem.Utilities;
 using ApplicantModel = HRAndApplicantSystem.Models.Applicant;
 using ApplicationServiceNS = HRAndApplicantSystem.Services.ApplicationService;
 
@@ -15,7 +16,7 @@ while (running)
     Console.WriteLine("3. Exit");
     Console.Write("Choose an option: ");
 
-    string choice = Console.ReadLine();
+    string choice = Console.ReadLine()?.Trim() ?? string.Empty;
 
     switch (choice)
     {
@@ -37,11 +38,8 @@ while (running)
 
 static void HandleLogin(LoginService loginService)
 {
-    Console.Write("Username: ");
-    string username = Console.ReadLine();
-
-    Console.Write("Password: ");
-    string password = Console.ReadLine();
+    string username = InputValidator.GetValidatedUsername();
+    string password = InputValidator.GetValidatedPassword();
 
     if (loginService.Login(username, password))
     {
@@ -51,17 +49,17 @@ static void HandleLogin(LoginService loginService)
         DatabaseHelper db = new DatabaseHelper();
         int roleId = db.GetUserRoleByUsername(username);
 
-        if (roleId == 1)  // Applicant
+        if (roleId == (int)UserRole.Applicant)
         {
             Console.WriteLine("\nWelcome Applicant!");
             ShowApplicantDashboard(username);
         }
-        else if (roleId == 2 || roleId == 3)  // HR or HRManager
+        else if (roleId == (int)UserRole.HR || roleId == (int)UserRole.HRManager)
         {
             Console.WriteLine("\nWelcome HR Staff!");
             // TODO: Show HR dashboard
         }
-        else if (roleId == 4)  // Admin
+        else if (roleId == (int)UserRole.Admin)
         {
             Console.WriteLine("\nWelcome Admin!");
             // TODO: Show Admin dashboard
@@ -105,7 +103,7 @@ static void ShowApplicantDashboard(string username)
             Console.WriteLine("5. Logout");
             Console.Write("Choose an option: ");
 
-            string choice = Console.ReadLine();
+            string choice = Console.ReadLine()?.Trim() ?? string.Empty;
 
             switch (choice)
             {
@@ -163,11 +161,8 @@ static void UpdateApplicantProfile(string username, ApplicationServiceNS appServ
 
 static void HandleRegistration(LoginService loginService)
 {
-    Console.Write("Enter username: ");
-    string username = Console.ReadLine();
-
-    Console.Write("Enter password: ");
-    string password = Console.ReadLine();
+    string username = InputValidator.GetValidatedUsername();
+    string password = InputValidator.GetValidatedPassword();
 
     bool success = loginService.RegisterApplicant(username, password);
 

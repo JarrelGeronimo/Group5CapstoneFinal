@@ -8,8 +8,6 @@
 
         public string JobDetail { get; set; }
 
-        public int JobSlots { get; set; }
-
         public string Status { get; set; }
     }
 }

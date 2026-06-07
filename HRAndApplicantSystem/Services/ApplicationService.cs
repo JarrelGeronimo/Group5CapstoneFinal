@@ -1,5 +1,6 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Models;
+using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -11,23 +12,12 @@ namespace HRAndApplicantSystem.Services
         {
             Console.WriteLine("\n=== Complete Your Applicant Profile ===\n");
 
-            Console.Write("First Name: ");
-            string firstName = Console.ReadLine();
-
-            Console.Write("Last Name: ");
-            string lastName = Console.ReadLine();
-
-            Console.Write("Contact Number: ");
-            string contactNo = Console.ReadLine();
-
-            Console.Write("Address: ");
-            string address = Console.ReadLine();
-
-            Console.Write("Education Background: ");
-            string education = Console.ReadLine();
-
-            Console.Write("Skills: ");
-            string skills = Console.ReadLine();
+            string firstName = InputValidator.GetValidatedInput("First Name: ", "First Name");
+            string lastName = InputValidator.GetValidatedInput("Last Name: ", "Last Name");
+            string contactNo = InputValidator.GetValidatedInput("Contact Number: ", "Contact Number");
+            string address = InputValidator.GetValidatedInput("Address: ", "Address");
+            string education = InputValidator.GetValidatedInput("Education Background: ", "Education");
+            string skills = InputValidator.GetValidatedInput("Skills: ", "Skills");
 
             Applicant applicant = new Applicant
             {
@@ -54,35 +44,12 @@ namespace HRAndApplicantSystem.Services
         {
             Console.WriteLine("\n=== Update Your Applicant Profile ===\n");
 
-            Console.Write($"First Name ({existingApplicant.FirstName}): ");
-            string firstName = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(firstName))
-                firstName = existingApplicant.FirstName;
-
-            Console.Write($"Last Name ({existingApplicant.LastName}): ");
-            string lastName = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(lastName))
-                lastName = existingApplicant.LastName;
-
-            Console.Write($"Contact Number ({existingApplicant.ContactNo}): ");
-            string contactNo = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(contactNo))
-                contactNo = existingApplicant.ContactNo;
-
-            Console.Write($"Address ({existingApplicant.Address}): ");
-            string address = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(address))
-                address = existingApplicant.Address;
-
-            Console.Write($"Education Background ({existingApplicant.Education}): ");
-            string education = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(education))
-                education = existingApplicant.Education;
-
-            Console.Write($"Skills ({existingApplicant.Skills}): ");
-            string skills = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(skills))
-                skills = existingApplicant.Skills;
+            string firstName = InputValidator.GetOptionalInput($"First Name ({existingApplicant.FirstName}): ", existingApplicant.FirstName);
+            string lastName = InputValidator.GetOptionalInput($"Last Name ({existingApplicant.LastName}): ", existingApplicant.LastName);
+            string contactNo = InputValidator.GetOptionalInput($"Contact Number ({existingApplicant.ContactNo}): ", existingApplicant.ContactNo);
+            string address = InputValidator.GetOptionalInput($"Address ({existingApplicant.Address}): ", existingApplicant.Address);
+            string education = InputValidator.GetOptionalInput($"Education Background ({existingApplicant.Education}): ", existingApplicant.Education);
+            string skills = InputValidator.GetOptionalInput($"Skills ({existingApplicant.Skills}): ", existingApplicant.Skills);
 
             Applicant updatedApplicant = new Applicant
             {
@@ -142,18 +109,17 @@ namespace HRAndApplicantSystem.Services
                     Console.WriteLine($"\n{i + 1}. {job.JobTitle}");
                     Console.WriteLine($"   Job ID: {job.JobID}");
                     Console.WriteLine($"   Details: {job.JobDetail}");
-                    Console.WriteLine($"   Available Slots: {job.JobSlots}");
-                    Console.WriteLine($"   Status: {(job.JobSlots > 0 ? "Open" : "Closed")}");
+                    Console.WriteLine($"   Status: {job.Status}");
                 }
 
                 Console.WriteLine($"\n{vacancies.Count + 1}. Back to Dashboard");
                 Console.Write("\nSelect a job to apply or choose option to go back: ");
 
-                if (int.TryParse(Console.ReadLine(), out int choice) && choice >= 1 && choice <= vacancies.Count)
+                if (int.TryParse(Console.ReadLine()?.Trim(), out int choice) && choice >= 1 && choice <= vacancies.Count)
                 {
                     var selectedJob = vacancies[choice - 1];
                     Console.Write($"\nDo you want to apply for {selectedJob.JobTitle}? (yes/no): ");
-                    string confirm = Console.ReadLine()?.ToLower();
+                    string confirm = (Console.ReadLine()?.Trim() ?? string.Empty).ToLower();
 
                     if (confirm == "yes" || confirm == "y")
                     {
@@ -208,19 +174,20 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine();
         }
 
+        // Placeholder methods for future usage
         public void ApplyForJob()
         {
-            // This method is now replaced by BrowseJobVacancies()
+            // TODO: Placeholder for future implementation
         }
 
         public void GetApplications()
         {
-            // This method is now replaced by ViewMyApplications()
+            // TODO: Placeholder for future implementation
         }
 
         public bool HasExistingApplication()
         {
-            // TODO: Implement check for existing application
+            // TODO: Placeholder for future implementation
             return false;
         }
     }

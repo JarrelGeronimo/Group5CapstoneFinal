@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Data.OleDb;
 using HRAndApplicantSystem.Models;
+using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Database
 {
@@ -26,8 +27,12 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    // Accept all roles: Applicant (1), HR (2), HRManager (3), Admin (4)
-                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (1, 2, 3, 4))";
+                    // Accept all valid roles
+                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (" + 
+                        RoleConstants.APPLICANT + ", " + 
+                        RoleConstants.HR + ", " + 
+                        RoleConstants.HR_MANAGER + ", " + 
+                        RoleConstants.ADMIN + "))";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
@@ -40,14 +45,53 @@ namespace HRAndApplicantSystem.Database
 
                         string storedPassword = result.ToString();
                         
-                        // Case-sensitive password comparison
-                        return storedPassword.Equals(password, StringComparison.Ordinal);
+                        // Try to verify as a hashed password first
+                        if (PasswordHasher.VerifyPassword(password, storedPassword))
+                            return true;
+
+                        // Fallback: Check if stored password is plain text (backward compatibility with existing accounts)
+                        if (storedPassword.Equals(password, StringComparison.Ordinal))
+                        {
+                            // Hash the password and update the database for future logins
+                            UpdatePasswordHash(username, password);
+                            return true;
+                        }
+
+                        return false;
                     }
                 }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Login validation error: {ex.Message}");
+                return false;
+            }
+        }
+
+        private bool UpdatePasswordHash(string username, string plainPassword)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string hashedPassword = PasswordHasher.HashPassword(plainPassword);
+                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @username";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@newPassword", hashedPassword);
+                        cmd.Parameters.AddWithValue("@username", username);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating password hash: {ex.Message}");
                 return false;
             }
         }
@@ -67,14 +111,17 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
+                    // Hash the password before storing
+                    string hashedPassword = PasswordHasher.HashPassword(password);
+
                     // Register with RoleID = 1 (Applicant)
                     string query = "INSERT INTO [Users] ([Username], [Password], [RoleID]) VALUES (@username, @password, @roleId)";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@username", username);
-                        cmd.Parameters.AddWithValue("@password", password);
-                        cmd.Parameters.AddWithValue("@roleId", 1);  // Applicant
+                        cmd.Parameters.AddWithValue("@password", hashedPassword);
+                        cmd.Parameters.AddWithValue("@roleId", (int)UserRole.Applicant);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -135,7 +182,7 @@ namespace HRAndApplicantSystem.Database
 
                     // Verify user is an applicant (RoleID = 1)
                     int roleID = GetUserRoleByUsername(username);
-                    if (roleID != 1)
+                    if (roleID != RoleConstants.APPLICANT)
                     {
                         Console.WriteLine("Only applicants can save applicant information.");
                         return false;
@@ -243,7 +290,7 @@ namespace HRAndApplicantSystem.Database
 
                     // Verify user is an applicant (RoleID = 1)
                     int roleID = GetUserRoleByUsername(username);
-                    if (roleID != 1)
+                    if (roleID != RoleConstants.APPLICANT)
                     {
                         Console.WriteLine("Only applicants can update applicant information.");
                         return false;
@@ -346,7 +393,7 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [JobSlots], [Status] FROM [JobVacancies] ORDER BY [JobID]";
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] ORDER BY [JobID]";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
@@ -359,7 +406,6 @@ namespace HRAndApplicantSystem.Database
                                     JobID = Convert.ToInt32(reader["JobID"]),
                                     JobTitle = reader["JobTitle"]?.ToString() ?? "",
                                     JobDetail = reader["JobDetail"]?.ToString() ?? "",
-                                    JobSlots = Convert.ToInt32(reader["JobSlots"]),
                                     Status = reader["Status"]?.ToString() ?? ""
                                 });
                             }

@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt" Version="1.0.0" />
     <PackageReference Include="System.Data.OleDb" Version="10.0.8" />
   </ItemGroup>
 
