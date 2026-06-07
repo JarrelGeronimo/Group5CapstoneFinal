@@ -240,6 +240,7 @@ namespace HRAndApplicantSystem.Database
                     int userID = GetUserIdByUsername(username);
                     if (userID == -1)
                     {
+                        Console.WriteLine($"Error: UserID not found for username: {username}");
                         return null;
                     }
 
@@ -254,7 +255,7 @@ namespace HRAndApplicantSystem.Database
                         {
                             if (reader.Read())
                             {
-                                return new Applicant
+                                var applicant = new Applicant
                                 {
                                     ApplicantID = reader["ApplicantID"] != DBNull.Value ? Convert.ToInt32(reader["ApplicantID"]) : 0,
                                     Username = username,
@@ -265,6 +266,12 @@ namespace HRAndApplicantSystem.Database
                                     Education = reader["Education"]?.ToString() ?? "",
                                     Skills = reader["Skills"]?.ToString() ?? ""
                                 };
+                                System.Diagnostics.Debug.WriteLine($"GetApplicantByUsername - Username: {username}, UserID: {userID}, ApplicantID: {applicant.ApplicantID}");
+                                return applicant;
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Applicant profile not found for UserID: {userID}");
                             }
                         }
                     }
@@ -273,6 +280,7 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error retrieving applicant info: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Exception: {ex}");
                 // Fallback: Try to get by most recent applicant (for backward compatibility)
                 // This shouldn't happen if UserID column exists
             }
@@ -495,6 +503,7 @@ namespace HRAndApplicantSystem.Database
 
                     string query = @"SELECT 
                                         a.[ApplicationID], 
+                                        a.[ApplicantID],
                                         a.[Status], 
                                         a.[DateApplied], 
                                         jv.[JobTitle],
@@ -515,7 +524,8 @@ namespace HRAndApplicantSystem.Database
                                 dynamic app = new
                                 {
                                     ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
-                                    Status = reader["Status"]?.ToString() ?? "",
+                                    ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                    ApplicationStatus = reader["Status"]?.ToString() ?? "",
                                     DateApplied = Convert.ToDateTime(reader["DateApplied"]),
                                     JobTitle = reader["JobTitle"]?.ToString() ?? "",
                                     JobID = Convert.ToInt32(reader["JobID"])
@@ -525,13 +535,168 @@ namespace HRAndApplicantSystem.Database
                         }
                     }
                 }
+
+                // Debug: Show applicant ID and count of applications found
+                System.Diagnostics.Debug.WriteLine($"GetApplicantApplications - ApplicantID: {applicantID}, Applications Found: {applications.Count}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error retrieving applications: {ex.Message}");
+                Console.WriteLine($"Error retrieving applications for ApplicantID {applicantID}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Exception: {ex}");
             }
 
             return applications;
+        }
+
+        public List<dynamic> GetJobRequirements(int jobID)
+        {
+            List<dynamic> requirements = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Get all available requirement types for any job
+                    string query = @"SELECT 
+                                        [RequirementTypeID], 
+                                        [RequirementName]
+                                    FROM [RequirementTypes]
+                                    ORDER BY [RequirementName]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic req = new
+                                {
+                                    RequirementTypeID = Convert.ToInt32(reader["RequirementTypeID"]),
+                                    RequirementName = reader["RequirementName"]?.ToString() ?? ""
+                                };
+                                requirements.Add(req);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving job requirements: {ex.Message}");
+            }
+
+            return requirements;
+        }
+
+        public bool SubmitApplicantDocument(int applicantID, int requirementTypeID, string remarks, string documentStatus = "Submitted")
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Check if document already exists
+                    string checkQuery = "SELECT [DocumentID] FROM [ApplicantDocuments] WHERE [ApplicantID] = @applicantID AND [RequirementTypeID] = @requirementTypeID";
+
+                    using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        checkCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
+
+                        object result = checkCmd.ExecuteScalar();
+                        
+                        if (result != null && result != DBNull.Value)
+                        {
+                            // Update existing document
+                            string updateQuery = "UPDATE [ApplicantDocuments] SET [DocumentStatus] = @status, [Remarks] = @remarks WHERE [ApplicantID] = @applicantID AND [RequirementTypeID] = @requirementTypeID";
+
+                            using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@status", documentStatus);
+                                updateCmd.Parameters.AddWithValue("@remarks", remarks);
+                                updateCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                                updateCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
+
+                                int rowsAffected = updateCmd.ExecuteNonQuery();
+                                return rowsAffected > 0;
+                            }
+                        }
+                    }
+
+                    // Insert new document
+                    string insertQuery = "INSERT INTO [ApplicantDocuments] ([ApplicantID], [RequirementTypeID], [DocumentStatus], [Remarks]) VALUES (@applicantID, @requirementTypeID, @status, @remarks)";
+
+                    using (OleDbCommand insertCmd = new OleDbCommand(insertQuery, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        insertCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
+                        insertCmd.Parameters.AddWithValue("@status", documentStatus);
+                        insertCmd.Parameters.AddWithValue("@remarks", remarks);
+
+                        int rowsAffected = insertCmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error submitting applicant document: {ex.Message}");
+                return false;
+            }
+        }
+
+        public List<dynamic> GetApplicantDocuments(int applicantID)
+        {
+            List<dynamic> documents = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                        ad.[DocumentID],
+                                        ad.[RequirementTypeID],
+                                        rt.[RequirementName],
+                                        ad.[DocumentStatus],
+                                        ad.[Remarks]
+                                    FROM [ApplicantDocuments] ad
+                                    INNER JOIN [RequirementTypes] rt ON ad.[RequirementTypeID] = rt.[RequirementTypeID]
+                                    WHERE ad.[ApplicantID] = @applicantID
+                                    ORDER BY rt.[RequirementName]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic doc = new
+                                {
+                                    DocumentID = Convert.ToInt32(reader["DocumentID"]),
+                                    RequirementTypeID = Convert.ToInt32(reader["RequirementTypeID"]),
+                                    RequirementName = reader["RequirementName"]?.ToString() ?? "",
+                                    DocumentStatus = reader["DocumentStatus"]?.ToString() ?? "",
+                                    Remarks = reader["Remarks"]?.ToString() ?? ""
+                                };
+                                documents.Add(doc);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applicant documents: {ex.Message}");
+            }
+
+            return documents;
         }
     }
 }

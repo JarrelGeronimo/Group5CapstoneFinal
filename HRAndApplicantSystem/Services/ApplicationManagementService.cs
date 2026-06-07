@@ -53,7 +53,7 @@ namespace HRAndApplicantSystem.Services
             var appList = applications.ToList();
             foreach (var app in appList)
             {
-                string status = ((string)app.Status).Length > 14 ? ((string)app.Status).Substring(0, 14) : (string)app.Status;
+                string status = ((string)app.ApplicationStatus).Length > 14 ? ((string)app.ApplicationStatus).Substring(0, 14) : (string)app.ApplicationStatus;
                 string date = ((DateTime)app.DateApplied).ToString("yyyy-MM-dd");
                 string jobTitle = ((string)app.JobTitle).Length > 24 ? ((string)app.JobTitle).Substring(0, 24) : (string)app.JobTitle;
                 Console.WriteLine($"{counter,-3} {jobTitle,-25} {status,-15} {date,-10}");
@@ -73,7 +73,7 @@ namespace HRAndApplicantSystem.Services
                     ApplicationID = (int)selectedApp.ApplicationID,
                     ApplicantID = (int)selectedApp.ApplicantID,
                     JobID = (int)selectedApp.JobID,
-                    Status = (string)selectedApp.Status,
+                    ApplicationStatus = (string)selectedApp.ApplicationStatus,
                     DateApplied = (DateTime)selectedApp.DateApplied
                 };
 
@@ -90,12 +90,12 @@ namespace HRAndApplicantSystem.Services
 
             Console.WriteLine($"Application ID:  {application.ApplicationID}");
             Console.WriteLine($"Job ID:          {application.JobID}");
-            Console.WriteLine($"Current Status:  {application.Status}");
+            Console.WriteLine($"Current Status:  {application.ApplicationStatus}");
             Console.WriteLine($"Date Applied:    {application.DateApplied:MMMM dd, yyyy HH:mm}");
 
             Console.WriteLine("\n=== Application Status Summary ===\n");
 
-            string statusMessage = application.Status switch
+            string statusMessage = application.ApplicationStatus switch
             {
                 "Submitted" => "Your application has been submitted and is pending initial review.\nWe'll notify you of any updates.",
                 "Under Review" => "Your application is currently being actively reviewed by our HR team.\nPlease check back soon for updates.",
@@ -103,22 +103,22 @@ namespace HRAndApplicantSystem.Services
                 "Interview Scheduled" => "Excellent! An interview has been scheduled for you.\nCheck your email for the date, time, and location.",
                 "Accepted" => "Congratulations! Your application has been accepted.\nPlease check your email for next steps.",
                 "Rejected" => "Unfortunately, we won't be moving forward with your application at this time.\nWe appreciate your interest and encourage you to apply for other positions.",
-                _ => "Your application status: " + application.Status
+                _ => "Your application status: " + application.ApplicationStatus
             };
 
             Console.WriteLine(statusMessage);
 
             Console.WriteLine("\n=== Actions ===\n");
             Console.WriteLine("1. View Application Summary");
-            if (application.Status == "Interview Scheduled")
+            Console.WriteLine("2. Manage Documents");
+            
+            int nextOption = 3;
+            if (application.ApplicationStatus == "Interview Scheduled")
             {
-                Console.WriteLine("2. View Interview Details");
-                Console.WriteLine("3. Back");
+                Console.WriteLine($"{nextOption}. View Interview Details");
+                nextOption++;
             }
-            else
-            {
-                Console.WriteLine("2. Back");
-            }
+            Console.WriteLine($"{nextOption}. Back");
 
             Console.Write("\nChoose an option: ");
 
@@ -130,7 +130,10 @@ namespace HRAndApplicantSystem.Services
                     ViewApplicationSummary(application);
                     break;
                 case "2":
-                    if (application.Status == "Interview Scheduled")
+                    ManageApplicationDocuments(application);
+                    break;
+                case "3":
+                    if (application.ApplicationStatus == "Interview Scheduled")
                     {
                         ViewInterviewDetails(application);
                     }
@@ -148,7 +151,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     APPLICATION SUMMARY                      ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            Console.WriteLine($"Status: {application.Status}");
+            Console.WriteLine($"Status: {application.ApplicationStatus}");
             Console.WriteLine($"Applied: {application.DateApplied:MMMM dd, yyyy HH:mm}");
 
             Console.WriteLine("\n" + new string('=', 45));
@@ -174,8 +177,14 @@ namespace HRAndApplicantSystem.Services
         {
             var applications = db.GetApplicantApplications(applicantId);
             return applications.Count(a => 
-                a.Status == "Submitted" || 
-                a.Status == "Under Review");
+                a.ApplicationStatus == "Submitted" || 
+                a.ApplicationStatus == "Under Review");
+        }
+
+        private void ManageApplicationDocuments(Application application)
+        {
+            DocumentSubmissionService docService = new DocumentSubmissionService();
+            docService.ManageDocumentSubmissions(application.ApplicantID, application.JobID);
         }
     }
 }

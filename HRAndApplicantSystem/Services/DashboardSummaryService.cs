@@ -39,10 +39,10 @@ namespace HRAndApplicantSystem.Services
             var statusCounts = new Dictionary<string, int>();
             foreach (var app in applications)
             {
-                if (statusCounts.ContainsKey(app.Status))
-                    statusCounts[app.Status]++;
+                if (statusCounts.ContainsKey(app.ApplicationStatus))
+                    statusCounts[app.ApplicationStatus]++;
                 else
-                    statusCounts[app.Status] = 1;
+                    statusCounts[app.ApplicationStatus] = 1;
             }
 
             foreach (var status in statusCounts.OrderBy(s => s.Key))
@@ -57,16 +57,16 @@ namespace HRAndApplicantSystem.Services
             foreach (var app in recentApps)
             {
                 Console.WriteLine($"Job: {app.JobTitle}");
-                Console.WriteLine($"Status: {app.Status}");
+                Console.WriteLine($"Status: {app.ApplicationStatus}");
                 Console.WriteLine($"Applied: {app.DateApplied:MMMM dd, yyyy}");
                 Console.WriteLine(new string('-', 40));
             }
 
             // Show upcoming actions/missing documents placeholder
             Console.WriteLine("\n=== Next Steps ===\n");
-            bool hasPendingReview = applications.Any(a => a.Status == "Submitted" || a.Status == "Under Review");
-            bool hasAccepted = applications.Any(a => a.Status == "Accepted");
-            bool hasInterviewScheduled = applications.Any(a => a.Status == "Interview Scheduled");
+            bool hasPendingReview = applications.Any(a => a.ApplicationStatus == "Submitted" || a.ApplicationStatus == "Under Review");
+            bool hasAccepted = applications.Any(a => a.ApplicationStatus == "Accepted");
+            bool hasInterviewScheduled = applications.Any(a => a.ApplicationStatus == "Interview Scheduled");
             bool hasDrafts = false; // No draft status in schema
 
             // Draft applications not applicable - applications go directly to Submitted status
@@ -108,7 +108,7 @@ namespace HRAndApplicantSystem.Services
         public int GetPendingApplicationCount(int applicantId)
         {
             var applications = db.GetApplicantApplications(applicantId);
-            return applications.Count(a => a.Status.Equals("Pending", StringComparison.OrdinalIgnoreCase));
+            return applications.Count(a => a.ApplicationStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

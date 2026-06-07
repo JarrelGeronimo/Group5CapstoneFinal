@@ -209,7 +209,23 @@ namespace HRAndApplicantSystem.Services
             if (db.SubmitJobApplication(applicantId, job.JobID))
             {
                 Console.WriteLine($"\n✓ Successfully applied for {job.JobTitle}!");
-                Console.WriteLine("Your application has been submitted to HR for review.");
+                Console.WriteLine("Your application has been submitted to HR for review.\n");
+
+                // Show job requirements and allow document submission
+                Console.WriteLine("This job has document requirements.\n");
+                Console.Write("Would you like to submit required documents now? (yes/no): ");
+                string choice = (Console.ReadLine()?.Trim() ?? "no").ToLower();
+
+                if (choice == "yes" || choice == "y")
+                {
+                    DocumentSubmissionService docService = new DocumentSubmissionService();
+                    docService.ManageDocumentSubmissions(applicantId, job.JobID);
+                    Console.WriteLine("\nYour documents have been saved. You can update them anytime from your dashboard.");
+                }
+                else
+                {
+                    Console.WriteLine("You can submit documents later from 'View My Applications'.");
+                }
             }
             else
             {

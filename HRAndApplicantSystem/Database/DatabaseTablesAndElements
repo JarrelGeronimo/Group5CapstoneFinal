@@ -1,0 +1,196 @@
+1. Roles
+RoleID (AutoNumber, PK)
+RoleName
+
+Example:
+
+1. Applicant
+2. HR
+3. HRManager
+4. Admin
+
+2. Users
+
+For HR/Admin/Applicant accounts.
+
+UserID (AutoNumber, PK)
+Username
+Password
+RoleID (FK)
+
+Example:
+
+1 
+admin
+123
+4
+
+4. Applicants
+
+Applicant profile information.
+
+ApplicantID (PK)
+FirstName
+LastName
+ContactNo
+Address
+Education
+Skills
+
+
+6. JobVacancies
+
+Based on your design:
+
+JobID (PK)
+JobTitle
+JobDetail
+Status
+
+7. Applications
+
+One of the most important tables.
+
+ApplicationID (PK)
+ApplicantID (FK)
+JobID (FK)
+ApplicationStatus
+DateApplied
+
+Example status:
+
+Submitted
+Under Review
+Shortlisted
+Accepted
+Rejected
+
+8. RequirementTypes
+
+List of document types.
+
+RequirementTypeID (PK)
+RequirementName
+
+Examples:
+
+Resume
+Valid ID
+Certificate
+
+9. ApplicantDocuments
+
+Tracks submitted requirements.
+
+DocumentID (PK)
+ApplicantID (FK)
+RequirementTypeID (FK)
+DocumentStatus
+Remarks
+
+Example:
+
+Submitted
+Missing
+Pending Verification
+
+
+10. ScreeningResults
+
+Used by HR.
+
+ScreeningID (PK)
+ApplicationID (FK)
+Result
+Remarks
+ScreenedBy
+DateScreened
+
+Result:
+
+Qualified
+Not Qualified
+
+11. InterviewSchedules
+ScheduleID (PK)
+ApplicationID (FK)
+InterviewDate
+InterviewTime
+Interviewer
+Location
+Status
+
+Status:
+
+Scheduled
+Completed
+Cancelled
+
+12. InterviewEvaluations
+EvaluationID (PK)
+ApplicationID (FK)
+Score
+Result
+Remarks
+DateEvaluated
+
+Result:
+
+Pass
+Fail
+
+13. HiringDecisions
+DecisionID (PK)
+ApplicationID (FK)
+Decision
+Remarks
+DecisionBy
+DecisionDate
+
+Decision:
+
+Accepted
+Rejected
+On Hold
+
+14. ApplicationStatusHistory
+
+Required by the project. Every status change gets recorded.
+
+HistoryID (PK)
+ApplicationID (FK)
+Status
+Remarks
+DateChanged
+ChangedBy
+
+Example:
+
+Submitted
+Application Submitted
+2026-06-07
+Applicant
+
+15. AuditTrail
+
+Tracks important actions.
+
+AuditID (PK)
+UserType
+UserID
+Action
+ActionDate
+
+Examples:
+
+Applicant
+15
+Updated Profile
+
+HR Staff
+2
+Started Review
+
+Admin
+1
+Accepted Applicant

@@ -8,7 +8,7 @@ namespace HRAndApplicantSystem.Models
 
         public int JobID { get; set; }
 
-        public string Status { get; set; }
+        public string ApplicationStatus { get; set; }
 
         public DateTime DateApplied { get; set; }
     }
