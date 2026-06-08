@@ -1810,7 +1810,52 @@ namespace HRAndApplicantSystem.Database
                 return false;
            }
         }
+        // ── APPLICATION STATUS HISTORY ────────────────────────
+        public List<dynamic> GetApplicationStatusHistory(int applicationID)
+        {
+            List<dynamic> history = new List<dynamic>();
 
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [HistoryID], [ApplicationID], [Status], [Remarks], 
+                                            [DateChanged], [ChangedBy]
+                                     FROM [ApplicationStatusHistory]
+                                     WHERE [ApplicationID] = @applicationID
+                                     ORDER BY [DateChanged] ASC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicationID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                history.Add(new
+                                {
+                                    HistoryID     = Convert.ToInt32(reader["HistoryID"]),
+                                    ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
+                                    Status        = reader["Status"]?.ToString() ?? "",
+                                    Remarks       = reader["Remarks"]?.ToString() ?? "",
+                                    DateChanged   = Convert.ToDateTime(reader["DateChanged"]),
+                                    ChangedBy     = reader["ChangedBy"]?.ToString() ?? ""
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving status history: {ex.Message}");
+            }
+
+            return history;
+        }
         public bool ChangeUserPassword(string username, string oldPassword, string newPassword)
         {
             try

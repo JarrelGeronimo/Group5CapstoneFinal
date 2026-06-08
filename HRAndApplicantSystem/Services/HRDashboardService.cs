@@ -137,7 +137,7 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("Press any key to return...");
                 Console.ReadKey();
                 return;
-            }
+            } 
 
             Console.WriteLine($"Found {pendingApps.Count} application(s) pending screening.\n");
             Console.WriteLine($"{"#",-3} {"Name",-20} {"Job Title",-25} {"Applied",-12}");
