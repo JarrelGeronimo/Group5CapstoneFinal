@@ -10,6 +10,8 @@ namespace HRAndApplicantSystem.Services
         private readonly InterviewService interviewService;
         private readonly HiringDecisionService hiringDecisionService;
         private readonly JobVacancyManagementService jobVacancyService;
+        private readonly AuditLogService auditLogService;
+        private readonly AccountSettingsService accountSettingsService;
 
         public HRDashboardService()
         {
@@ -18,6 +20,8 @@ namespace HRAndApplicantSystem.Services
             interviewService = new InterviewService();
             hiringDecisionService = new HiringDecisionService();
             jobVacancyService = new JobVacancyManagementService();
+            auditLogService = new AuditLogService();
+            accountSettingsService = new AccountSettingsService();
         }
 
         public void ShowDashboard(string hrUsername)
@@ -48,11 +52,15 @@ namespace HRAndApplicantSystem.Services
                 {
                     Console.WriteLine("6. Job Vacancy Management");
                     Console.WriteLine("7. Hiring Decision (Accept / Reject)");
-                    Console.WriteLine("8. Logout");
+                    Console.WriteLine("8. View Audit Logs");
+                    Console.WriteLine("9. Account Settings");
+                    Console.WriteLine("10. Logout");
                 }
                 else
                 {
-                    Console.WriteLine("6. Logout");
+                    Console.WriteLine("6. View Audit Logs");
+                    Console.WriteLine("7. Account Settings");
+                    Console.WriteLine("8. Logout");
                 }
 
                 Console.Write("\nChoose an option: ");
@@ -69,7 +77,9 @@ namespace HRAndApplicantSystem.Services
                         case "5": FilterApplicationsByStatus(); break;
                         case "6": jobVacancyService.ShowJobVacancyManagementMenu(); break;
                         case "7": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
-                        case "8":
+                        case "8": ViewAuditLogs(); break;
+                        case "9": accountSettingsService.ShowAccountSettings(hrUsername); break;
+                        case "10":
                             running = false;
                             Console.WriteLine("\nLogging out...");
                             break;
@@ -88,7 +98,9 @@ namespace HRAndApplicantSystem.Services
                         case "3": ViewAllApplications(); break;
                         case "4": FilterApplicationsByJob(); break;
                         case "5": FilterApplicationsByStatus(); break;
-                        case "6":
+                        case "6": ViewAuditLogs(); break;
+                        case "7": accountSettingsService.ShowAccountSettings(hrUsername); break;
+                        case "8":
                             running = false;
                             Console.WriteLine("\nLogging out...");
                             break;
@@ -276,6 +288,11 @@ namespace HRAndApplicantSystem.Services
                 string dateApplied = ((DateTime)app.DateApplied).ToString("yyyy-MM-dd");
                 Console.WriteLine($"{name,-20} {jobTitle,-25} {status,-15} {dateApplied,-12}");
             }
+        }
+
+        private void ViewAuditLogs()
+        {
+            auditLogService.ViewAuditLogs();
         }
     }
 }

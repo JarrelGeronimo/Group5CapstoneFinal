@@ -419,6 +419,68 @@ namespace HRAndApplicantSystem.Database
             return -1;
         }
 
+        public int GetUserIDByUsername(string username)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [UserID] FROM [Users] WHERE [Username] = @username";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@username", username);
+
+                        object result = cmd.ExecuteScalar();
+
+                        if (result != null && result != DBNull.Value)
+                        {
+                            return Convert.ToInt32(result);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting user ID: {ex.Message}");
+            }
+
+            return -1;
+        }
+
+        public string GetUsernameByUserID(int userID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [Username] FROM [Users] WHERE [UserID] = @userID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userID", userID);
+
+                        object result = cmd.ExecuteScalar();
+
+                        if (result != null && result != DBNull.Value)
+                        {
+                            return result.ToString();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting username: {ex.Message}");
+            }
+
+            return "Unknown";
+        }
+
         public int GetUserRoleByUsername(string username)
         {
             try
@@ -448,6 +510,29 @@ namespace HRAndApplicantSystem.Database
             }
 
             return -1;
+        }
+
+        public string GetRoleNameByUsername(string username)
+        {
+            try
+            {
+                int roleID = GetUserRoleByUsername(username);
+                
+                return roleID switch
+                {
+                    RoleConstants.APPLICANT => "Applicant",
+                    RoleConstants.HR => "HR Staff",
+                    RoleConstants.HR_MANAGER => "HR Manager",
+                    RoleConstants.ADMIN => "Admin",
+                    _ => "Unknown"
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting role name: {ex.Message}");
+            }
+
+            return "Unknown";
         }
 
         public List<HRAndApplicantSystem.Models.JobVacancy> GetAllJobVacancies()
@@ -1057,6 +1142,10 @@ namespace HRAndApplicantSystem.Database
                     // Record status history
                     RecordStatusChange(applicationID, newStatus, $"Screened by HR: {result}", hrUsername);
 
+                    // Log audit trail
+                    string screeningRole = GetRoleNameByUsername(hrUsername);
+                    LogAuditTrail(screeningRole, hrUsername, $"Screened Application #{applicationID} - Result: {result}");
+
                     return true;
                 }
             }
@@ -1158,6 +1247,119 @@ namespace HRAndApplicantSystem.Database
             }
 
             return false;
+        }
+
+        public bool LogAuditTrail(string userType, string username, string action)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Get UserID from username
+                    int userID = GetUserIDByUsername(username);
+
+                    string query = "INSERT INTO [AuditTrail] ([UserType], [UserID], [Action], [ActionDate]) VALUES (@userType, @userID, @action, @actionDate)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add(new OleDbParameter("@userType", userType));
+                        cmd.Parameters.Add(new OleDbParameter("@userID", userID > 0 ? userID : (object)DBNull.Value));
+                        cmd.Parameters.Add(new OleDbParameter("@action", action));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@actionDate", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error logging audit trail: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        // Legacy overload for backward compatibility
+        public bool LogAuditTrail(string userType, string action)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "INSERT INTO [AuditTrail] ([UserType], [Action], [ActionDate]) VALUES (@userType, @action, @actionDate)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add(new OleDbParameter("@userType", userType));
+                        cmd.Parameters.Add(new OleDbParameter("@action", action));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@actionDate", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error logging audit trail: {ex.Message}");
+            }
+
+            return false;
+        }
+
+        public List<dynamic> GetAuditTrail(int limit = 50)
+        {
+            List<dynamic> auditLogs = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = $@"SELECT TOP {limit} [AuditID], [UserType], [UserID], [Action], [ActionDate]
+                                     FROM [AuditTrail]
+                                     ORDER BY [ActionDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int userID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0;
+                                string username = userID > 0 ? GetUsernameByUserID(userID) : "Unknown";
+
+                                auditLogs.Add(new
+                                {
+                                    AuditID = reader["AuditID"],
+                                    UserType = reader["UserType"],
+                                    Username = username,
+                                    Action = reader["Action"],
+                                    ActionDate = reader["ActionDate"]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving audit trail: {ex.Message}");
+            }
+
+            return auditLogs;
         }
 
         public List<dynamic> GetApplicationsByStatus(string status)
@@ -1298,6 +1500,10 @@ namespace HRAndApplicantSystem.Database
                     RecordStatusChange(applicationID, "Interview Scheduled",
                         $"Interview scheduled on {interviewDateTime:MMMM dd, yyyy HH:mm}", scheduledBy);
 
+                    // Log audit trail
+                    string interviewRole = GetRoleNameByUsername(scheduledBy);
+                    LogAuditTrail(interviewRole, scheduledBy, $"Scheduled Interview for Application #{applicationID} on {interviewDateTime:MMMM dd, yyyy HH:mm}");
+
                     return true;
                 }
             }
@@ -1402,6 +1608,10 @@ namespace HRAndApplicantSystem.Database
                     RecordStatusChange(applicationID, newStatus,
                         $"Interview evaluated: {result} (Score: {score}/100). {remarks}", evaluatedBy);
 
+                    // Log audit trail
+                    string evaluationRole = GetRoleNameByUsername(evaluatedBy);
+                    LogAuditTrail(evaluationRole, evaluatedBy, $"Evaluated Interview for Application #{applicationID} - Result: {result} (Score: {score}/100)");
+
                     return true;
                 }
             }
@@ -1453,6 +1663,10 @@ namespace HRAndApplicantSystem.Database
                     // Record status history
                     RecordStatusChange(applicationID, decision,
                         $"Final decision: {decision}. {remarks}", decidedBy);
+
+                    // Log audit trail
+                    string decisionRole = GetRoleNameByUsername(decidedBy);
+                    LogAuditTrail(decisionRole, decidedBy, $"Made Hiring Decision for Application #{applicationID} - Decision: {decision}");
 
                     return true;
                 }
@@ -1541,6 +1755,64 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error deleting job vacancy: {ex.Message}");
                 return false;
            }
+        }
+
+        public bool ChangeUserPassword(string username, string oldPassword, string newPassword)
+        {
+            try
+            {
+                // First validate that the old password is correct
+                if (!ValidateLogin(username, oldPassword))
+                {
+                    return false;
+                }
+
+                // Password is correct, now update it
+                return UpdatePasswordHash(username, newPassword);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error changing password: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool ChangeUsername(string oldUsername, string newUsername)
+        {
+            try
+            {
+                // Check if new username already exists
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string checkQuery = "SELECT COUNT(*) FROM [Users] WHERE [Username] = @username";
+                    using (OleDbCommand cmd = new OleDbCommand(checkQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@username", newUsername);
+                        int count = (int)cmd.ExecuteScalar();
+                        if (count > 0)
+                        {
+                            return false; // Username already exists
+                        }
+                    }
+
+                    // Username doesn't exist, proceed with update
+                    string updateQuery = "UPDATE [Users] SET [Username] = @newUsername WHERE [Username] = @oldUsername";
+                    using (OleDbCommand cmd = new OleDbCommand(updateQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@newUsername", newUsername);
+                        cmd.Parameters.AddWithValue("@oldUsername", oldUsername);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error changing username: {ex.Message}");
+                return false;
+            }
         }
     }
 }

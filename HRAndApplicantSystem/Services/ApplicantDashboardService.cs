@@ -9,6 +9,7 @@ namespace HRAndApplicantSystem.Services
         private readonly ApplicantProfileService profileService;
         private readonly JobVacancyService jobVacancyService;
         private readonly ApplicationManagementService applicationManagementService;
+        private readonly AccountSettingsService accountSettingsService;
 
         public ApplicantDashboardService()
         {
@@ -16,6 +17,7 @@ namespace HRAndApplicantSystem.Services
             profileService = new ApplicantProfileService();
             jobVacancyService = new JobVacancyService();
             applicationManagementService = new ApplicationManagementService();
+            accountSettingsService = new AccountSettingsService();
         }
 
         public void ShowDashboard(Applicant applicant, string username)
@@ -39,7 +41,8 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("2. Manage My Profile");
                 Console.WriteLine("3. Browse Job Vacancies");
                 Console.WriteLine("4. View My Applications");
-                Console.WriteLine("5. Logout");
+                Console.WriteLine("5. Account Settings");
+                Console.WriteLine("6. Logout");
                 Console.Write("\nChoose an option: ");
 
                 string choice = Console.ReadLine()?.Trim() ?? string.Empty;
@@ -59,6 +62,9 @@ namespace HRAndApplicantSystem.Services
                         applicationManagementService.ManageApplications(applicant);
                         break;
                     case "5":
+                        accountSettingsService.ShowAccountSettings(username);
+                        break;
+                    case "6":
                         dashboardRunning = false;
                         Console.WriteLine("\nLogging out...");
                         break;

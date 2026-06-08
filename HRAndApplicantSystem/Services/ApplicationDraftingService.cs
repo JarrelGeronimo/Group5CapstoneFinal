@@ -160,6 +160,9 @@ namespace HRAndApplicantSystem.Services
                 // Update draft to Submitted status
                 if (db.UpdateApplicationStatus(applicationID, "Submitted", "Draft submitted by applicant", "Applicant"))
                 {
+                    // Log audit trail for applicant submission
+                    db.LogAuditTrail("Applicant", draft.Applicant.Username, $"Submitted Application #{applicationID} for Position: {draft.Job.JobTitle}");
+                    
                     Console.WriteLine($"\n✓ Successfully submitted application for {draft.Job.JobTitle}!");
                     Console.WriteLine("Press any key to continue...");
                     Console.ReadKey();
