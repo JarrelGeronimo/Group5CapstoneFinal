@@ -2331,5 +2331,634 @@ namespace HRAndApplicantSystem.Database
             // No JobRequirements table exists - all jobs share the same requirements
             return false;
         }
-    }
-}
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ── REPORTING & STATISTICS METHODS ──────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Get total count of applications and breakdown by status
+        /// </summary>
+        public dynamic GetApplicationMetrics()
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Get total applications
+                    string totalQuery = "SELECT COUNT(*) FROM [Applications] WHERE [Status] <> 'Draft'";
+                    int totalApplications = 0;
+                    using (OleDbCommand cmd = new OleDbCommand(totalQuery, conn))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        totalApplications = result != null ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Get breakdown by status
+                    string statusQuery = @"SELECT [Status], COUNT(*) as Count 
+                                          FROM [Applications] 
+                                          WHERE [Status] <> 'Draft'
+                                          GROUP BY [Status]
+                                          ORDER BY [Status]";
+                    var statusBreakdown = new List<dynamic>();
+                    using (OleDbCommand cmd = new OleDbCommand(statusQuery, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                statusBreakdown.Add(new
+                                {
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    Count = Convert.ToInt32(reader["Count"])
+                                });
+                            }
+                        }
+                    }
+
+                    return new
+                    {
+                        TotalApplications = totalApplications,
+                        StatusBreakdown = statusBreakdown
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving application metrics: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get interview pass/fail rates (based on screening results)
+        /// </summary>
+        public dynamic GetInterviewMetrics()
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Get total interviews evaluated
+                    string totalQuery = "SELECT COUNT(*) FROM [InterviewEvaluations]";
+                    int totalInterviews = 0;
+                    using (OleDbCommand cmd = new OleDbCommand(totalQuery, conn))
+                    {
+                        object result = cmd.ExecuteScalar();
+                        totalInterviews = result != null ? Convert.ToInt32(result) : 0;
+                    }
+
+                    // Get pass/fail breakdown by result
+                    string resultQuery = @"SELECT [Result], COUNT(*) as Count 
+                                          FROM [InterviewEvaluations]
+                                          GROUP BY [Result]
+                                          ORDER BY [Result]";
+                    var resultBreakdown = new List<dynamic>();
+                    int passCount = 0, failCount = 0;
+                    
+                    using (OleDbCommand cmd = new OleDbCommand(resultQuery, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string result = reader["Result"]?.ToString() ?? "";
+                                int count = Convert.ToInt32(reader["Count"]);
+                                
+                                if (result.Contains("Pass") || result.Contains("Qualified"))
+                                    passCount += count;
+                                else if (result.Contains("Fail") || result.Contains("Not Qualified"))
+                                    failCount += count;
+
+                                resultBreakdown.Add(new
+                                {
+                                    Result = result,
+                                    Count = count
+                                });
+                            }
+                        }
+                    }
+
+                    double passRate = totalInterviews > 0 ? (passCount * 100.0) / totalInterviews : 0;
+                    double failRate = totalInterviews > 0 ? (failCount * 100.0) / totalInterviews : 0;
+
+                    return new
+                    {
+                        TotalInterviews = totalInterviews,
+                        PassCount = passCount,
+                        FailCount = failCount,
+                        PassRate = Math.Round(passRate, 2),
+                        FailRate = Math.Round(failRate, 2),
+                        ResultBreakdown = resultBreakdown
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving interview metrics: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get time-to-hire metrics (average, min, max time from application to hiring decision)
+        /// </summary>
+        public dynamic GetTimeToHireMetrics()
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                    a.[ApplicationID],
+                                    a.[DateApplied],
+                                    ISNULL(hd.[DecisionDate], a.[DateApplied]) as ResolvedDate,
+                                    DATEDIFF(day, a.[DateApplied], ISNULL(hd.[DecisionDate], a.[DateApplied])) as DaysToHire
+                                FROM [Applications] a
+                                LEFT JOIN [HiringDecisions] hd ON a.[ApplicationID] = hd.[ApplicationID]
+                                WHERE a.[Status] <> 'Draft'";
+
+                    var timeToHireData = new List<dynamic>();
+                    var daysList = new List<int>();
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int daysToHire = Convert.ToInt32(reader["DaysToHire"]);
+                                daysList.Add(daysToHire);
+                                
+                                timeToHireData.Add(new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
+                                    DateApplied = Convert.ToDateTime(reader["DateApplied"]),
+                                    ResolvedDate = Convert.ToDateTime(reader["ResolvedDate"]),
+                                    DaysToHire = daysToHire
+                                });
+                            }
+                        }
+                    }
+
+                    // Calculate metrics
+                    int totalApplications = daysList.Count;
+                    double avgDays = totalApplications > 0 ? daysList.Average() : 0;
+                    int minDays = totalApplications > 0 ? daysList.Min() : 0;
+                    int maxDays = totalApplications > 0 ? daysList.Max() : 0;
+                    
+                    // Calculate median
+                    double medianDays = 0;
+                    if (totalApplications > 0)
+                    {
+                        var sortedList = daysList.OrderBy(x => x).ToList();
+                        medianDays = totalApplications % 2 == 0
+                            ? (sortedList[totalApplications / 2 - 1] + sortedList[totalApplications / 2]) / 2.0
+                            : sortedList[totalApplications / 2];
+                    }
+
+                    return new
+                    {
+                        TotalApplications = totalApplications,
+                        AverageDaysToHire = Math.Round(avgDays, 2),
+                        MinDaysToHire = minDays,
+                        MaxDaysToHire = maxDays,
+                        MedianDaysToHire = Math.Round(medianDays, 2),
+                        DetailedData = timeToHireData
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving time-to-hire metrics: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get hiring decision metrics (offers, rejections, pending)
+        /// </summary>
+        public dynamic GetHiringDecisionMetrics()
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string decisionQuery = @"SELECT [Decision], COUNT(*) as Count 
+                                            FROM [HiringDecisions]
+                                            GROUP BY [Decision]
+                                            ORDER BY [Decision]";
+
+                    var decisionBreakdown = new List<dynamic>();
+                    int offeredCount = 0, rejectedCount = 0, totalDecisions = 0;
+
+                    using (OleDbCommand cmd = new OleDbCommand(decisionQuery, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string decision = reader["Decision"]?.ToString() ?? "";
+                                int count = Convert.ToInt32(reader["Count"]);
+                                totalDecisions += count;
+
+                                if (decision.Contains("Hired") || decision.Contains("Offer"))
+                                    offeredCount += count;
+                                else if (decision.Contains("Rejected"))
+                                    rejectedCount += count;
+
+                                decisionBreakdown.Add(new
+                                {
+                                    Decision = decision,
+                                    Count = count
+                                });
+                            }
+                        }
+                    }
+
+                    double offerRate = totalDecisions > 0 ? (offeredCount * 100.0) / totalDecisions : 0;
+                    double rejectionRate = totalDecisions > 0 ? (rejectedCount * 100.0) / totalDecisions : 0;
+
+                    return new
+                    {
+                        TotalDecisions = totalDecisions,
+                        OfferedCount = offeredCount,
+                        RejectedCount = rejectedCount,
+                        OfferRate = Math.Round(offerRate, 2),
+                        RejectionRate = Math.Round(rejectionRate, 2),
+                        DecisionBreakdown = decisionBreakdown
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving hiring decision metrics: {ex.Message}");
+                return null;
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ── APPLICANT SEARCH & PROFILE VIEWING METHODS ──────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Search applicants by name (supports partial name matching)
+        /// </summary>
+        public List<dynamic> SearchApplicantsByName(string searchName)
+        {
+            try
+            {
+                var results = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                    ap.[ApplicantID],
+                                    ap.[First Name],
+                                    ap.[Last Name],
+                                    ap.[ContactNo],
+                                    ap.[Address],
+                                    ap.[Education],
+                                    ap.[Skills],
+                                    u.[Username],
+                                    u.[UserID]
+                                FROM [Applicants] ap
+                                INNER JOIN [Users] u ON ap.[UserID] = u.[UserID]
+                                WHERE ap.[First Name] LIKE @search OR ap.[Last Name] LIKE @search
+                                ORDER BY ap.[Last Name], ap.[First Name]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@search", "%" + searchName + "%");
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                results.Add(new
+                                {
+                                    ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                    FirstName = reader["First Name"]?.ToString() ?? "",
+                                    LastName = reader["Last Name"]?.ToString() ?? "",
+                                    ContactNo = reader["ContactNo"]?.ToString() ?? "",
+                                    Address = reader["Address"]?.ToString() ?? "",
+                                    Education = reader["Education"]?.ToString() ?? "",
+                                    Skills = reader["Skills"]?.ToString() ?? "",
+                                    Username = reader["Username"]?.ToString() ?? "",
+                                    UserID = Convert.ToInt32(reader["UserID"])
+                                });
+                            }
+                        }
+                    }
+                }
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error searching applicants by name: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
+
+        /// <summary>
+        /// Search applicants by skills (supports partial matching)
+        /// </summary>
+        public List<dynamic> SearchApplicantsBySkills(string skillsKeyword)
+        {
+            try
+            {
+                var results = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                    ap.[ApplicantID],
+                                    ap.[First Name],
+                                    ap.[Last Name],
+                                    ap.[ContactNo],
+                                    ap.[Skills],
+                                    u.[Username]
+                                FROM [Applicants] ap
+                                INNER JOIN [Users] u ON ap.[UserID] = u.[UserID]
+                                WHERE ap.[Skills] LIKE @skillSearch
+                                ORDER BY ap.[Last Name], ap.[First Name]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@skillSearch", "%" + skillsKeyword + "%");
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                results.Add(new
+                                {
+                                    ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                    FirstName = reader["First Name"]?.ToString() ?? "",
+                                    LastName = reader["Last Name"]?.ToString() ?? "",
+                                    ContactNo = reader["ContactNo"]?.ToString() ?? "",
+                                    Skills = reader["Skills"]?.ToString() ?? "",
+                                    Username = reader["Username"]?.ToString() ?? ""
+                                });
+                            }
+                        }
+                    }
+                }
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error searching applicants by skills: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
+
+        /// <summary>
+        /// Get comprehensive applicant profile including all history and documents
+        /// </summary>
+        public dynamic GetApplicantFullProfile(int applicantID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Get basic applicant info
+                    Applicant applicantInfo = GetApplicantByID(applicantID);
+                    if (applicantInfo == null)
+                        return null;
+
+                    // Get all applications for this applicant
+                    var applications = new List<dynamic>();
+                    string appQuery = @"SELECT 
+                                      a.[ApplicationID],
+                                      a.[JobID],
+                                      a.[Status],
+                                      a.[DateApplied],
+                                      jv.[JobTitle],
+                                      jv.[JobDetail]
+                                  FROM [Applications] a
+                                  INNER JOIN [JobVacancies] jv ON a.[JobID] = jv.[JobID]
+                                  WHERE a.[ApplicantID] = @applicantID
+                                  ORDER BY a.[DateApplied] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(appQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int appID = Convert.ToInt32(reader["ApplicationID"]);
+                                applications.Add(new
+                                {
+                                    ApplicationID = appID,
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? "",
+                                    JobDetail = reader["JobDetail"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader["DateApplied"]),
+                                    StatusHistory = GetApplicationStatusHistory(appID),
+                                    InterviewSchedule = GetScheduledInterview(appID),
+                                    InterviewEvaluation = GetInterviewEvaluationByApplicationID(appID),
+                                    HiringDecision = GetHiringDecisionByApplicationID(appID)
+                                });
+                            }
+                        }
+                    }
+
+                    return new
+                    {
+                        ApplicantID = applicantInfo.ApplicantID,
+                        FirstName = applicantInfo.FirstName,
+                        LastName = applicantInfo.LastName,
+                        ContactNo = applicantInfo.ContactNo,
+                        Address = applicantInfo.Address,
+                        Education = applicantInfo.Education,
+                        Skills = applicantInfo.Skills,
+                        Applications = applications,
+                        ApplicationCount = applications.Count
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applicant full profile: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get interview evaluation details for an application
+        /// </summary>
+        private dynamic GetInterviewEvaluationByApplicationID(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT TOP 1
+                                    [EvaluationID],
+                                    [Score],
+                                    [Result],
+                                    [Remarks],
+                                    [DateEvaluated]
+                                FROM [InterviewEvaluations]
+                                WHERE [ApplicationID] = @appID
+                                ORDER BY [DateEvaluated] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new
+                                {
+                                    EvaluationID = Convert.ToInt32(reader["EvaluationID"]),
+                                    Score = Convert.ToInt32(reader["Score"]),
+                                    Result = reader["Result"]?.ToString() ?? "",
+                                    Remarks = reader["Remarks"]?.ToString() ?? "",
+                                    DateEvaluated = Convert.ToDateTime(reader["DateEvaluated"])
+                                };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving interview evaluation: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get hiring decision for an application
+        /// </summary>
+        private dynamic GetHiringDecisionByApplicationID(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT TOP 1
+                                    [DecisionID],
+                                    [Decision],
+                                    [Remarks],
+                                    [DecisionBy],
+                                    [DecisionDate]
+                                FROM [HiringDecisions]
+                                WHERE [ApplicationID] = @appID
+                                ORDER BY [DecisionDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new
+                                {
+                                    DecisionID = Convert.ToInt32(reader["DecisionID"]),
+                                    Decision = reader["Decision"]?.ToString() ?? "",
+                                    Remarks = reader["Remarks"]?.ToString() ?? "",
+                                    DecisionBy = reader["DecisionBy"]?.ToString() ?? "",
+                                    DecisionDate = Convert.ToDateTime(reader["DecisionDate"])
+                                };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving hiring decision: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Get all applicants (paginated)
+        /// </summary>
+        public List<dynamic> GetAllApplicants(int pageNumber = 1, int pageSize = 20)
+        {
+            try
+            {
+                var results = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    int offset = (pageNumber - 1) * pageSize;
+
+                    string query = $@"SELECT 
+                                    ap.[ApplicantID],
+                                    ap.[First Name],
+                                    ap.[Last Name],
+                                    ap.[ContactNo],
+                                    ap.[Education],
+                                    ap.[Skills],
+                                    u.[Username],
+                                    COUNT(a.[ApplicationID]) as ApplicationCount
+                                FROM [Applicants] ap
+                                INNER JOIN [Users] u ON ap.[UserID] = u.[UserID]
+                                LEFT JOIN [Applications] a ON ap.[ApplicantID] = a.[ApplicantID]
+                                GROUP BY ap.[ApplicantID], ap.[First Name], ap.[Last Name], ap.[ContactNo], ap.[Education], ap.[Skills], u.[Username]
+                                ORDER BY ap.[Last Name], ap.[First Name]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            int count = 0;
+                            while (reader.Read())
+                            {
+                                if (count >= offset && count < offset + pageSize)
+                                {
+                                    results.Add(new
+                                    {
+                                        ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                        FirstName = reader["First Name"]?.ToString() ?? "",
+                                        LastName = reader["Last Name"]?.ToString() ?? "",
+                                        ContactNo = reader["ContactNo"]?.ToString() ?? "",
+                                        Education = reader["Education"]?.ToString() ?? "",
+                                        Skills = reader["Skills"]?.ToString() ?? "",
+                                        Username = reader["Username"]?.ToString() ?? "",
+                                        ApplicationCount = Convert.ToInt32(reader["ApplicationCount"])
+                                    });
+                                }
+                                count++;
+                            }
+                        }
+                    }
+                }
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving all applicants: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
