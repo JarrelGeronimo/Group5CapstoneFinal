@@ -138,18 +138,35 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine($"Position: {draft.Job.JobTitle}");
             Console.WriteLine($"Applicant: {draft.Applicant.FirstName} {draft.Applicant.LastName}");
 
-            var documents = db.GetApplicantDocuments(draft.Applicant.ApplicantID, draft.Job.JobID);
-            Console.WriteLine($"\nDocuments Prepared: {documents.Count}");
-            if (documents.Count > 0)
+            var requirements = db.GetJobSpecificRequirements(draft.Job.JobID);
+            Console.WriteLine($"\nRequired Documents: {requirements.Count}");
+            
+            if (requirements.Count > 0)
             {
-                foreach (var doc in documents)
+                var documents = db.GetApplicantDocuments(draft.Applicant.ApplicantID, draft.Job.JobID);
+                foreach (var req in requirements)
                 {
-                    Console.WriteLine($"  • {doc.RequirementName}: {doc.DocumentStatus}");
+                    var doc = documents.FirstOrDefault(d => d.RequirementTypeID == req.RequirementTypeID);
+                    string status = doc != null ? doc.DocumentStatus : "Not Submitted";
+                    string icon = status == "Submitted" ? "✓" : "✗";
+                    Console.WriteLine($"  {icon} {req.RequirementName}: {status}");
                 }
             }
 
+            // Check if all requirements are met
+            if (!db.CheckAllJobRequirementsSubmitted(draft.Applicant.ApplicantID, draft.Job.JobID))
+            {
+                Console.WriteLine("\n" + new string('=', 45));
+                Console.WriteLine("\n✗ ERROR: All required documents must be submitted before submission.");
+                Console.WriteLine("Please upload all required documents and mark them as 'Submitted'.\n");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return false;
+            }
+
             Console.WriteLine("\n" + new string('=', 45));
-            Console.WriteLine("\nOnce you submit, your application will be sent to HR for review.");
+            Console.WriteLine("\n✓ All required documents have been submitted.");
+            Console.WriteLine("Once you submit, your application will be sent to HR for review.");
             Console.WriteLine("You can update your documents anytime from your dashboard.\n");
 
             Console.Write("Do you want to submit this application? (yes/no): ");

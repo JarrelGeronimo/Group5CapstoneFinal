@@ -1,6 +1,10 @@
 {
     "chat.tools.terminal.autoApprove": {
         ".\\HRAndApplicantSystem.exe": true,
-        "dotnet clean": true
+        "dotnet clean": true,
+        "/^powershell -Command \"Get-Content 'c:\\\\C# Projects\\\\source\\\\repos\\\\HRAndApplicantSystem\\\\HRAndApplicantSystem\\\\Services\\\\JobVacancyManagementService\\.cs' \\| Select-Object -Last 10\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

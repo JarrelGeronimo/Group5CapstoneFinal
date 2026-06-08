@@ -26,6 +26,30 @@ namespace HRAndApplicantSystem.Utilities
         }
 
         /// <summary>
+        /// Read and validate input with optional requirement
+        /// </summary>
+        public static string GetValidatedInput(string prompt, string fieldName = "Input", bool isOptional = false)
+        {
+            while (true)
+            {
+                Console.Write(prompt);
+                string input = Console.ReadLine()?.Trim() ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(input))
+                {
+                    if (isOptional)
+                    {
+                        return string.Empty;
+                    }
+                    Console.WriteLine($"Error: {fieldName} cannot be empty. Please try again.");
+                    continue;
+                }
+
+                return input;
+            }
+        }
+
+        /// <summary>
         /// Read a line from console, trim whitespace, and allow empty input with default fallback
         /// </summary>
         public static string GetOptionalInput(string prompt, string defaultValue = "")

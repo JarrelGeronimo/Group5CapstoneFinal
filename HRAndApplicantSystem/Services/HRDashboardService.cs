@@ -12,6 +12,8 @@ namespace HRAndApplicantSystem.Services
         private readonly JobVacancyManagementService jobVacancyService;
         private readonly AuditLogService auditLogService;
         private readonly AccountSettingsService accountSettingsService;
+        private readonly ApplicationStatusTransitionService statusTransitionService;
+        private readonly RequirementManagementService requirementManagementService;
 
         public HRDashboardService()
         {
@@ -22,6 +24,8 @@ namespace HRAndApplicantSystem.Services
             jobVacancyService = new JobVacancyManagementService();
             auditLogService = new AuditLogService();
             accountSettingsService = new AccountSettingsService();
+            statusTransitionService = new ApplicationStatusTransitionService();
+            requirementManagementService = new RequirementManagementService();
         }
 
         public void ShowDashboard(string hrUsername)
@@ -47,20 +51,22 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("3. View All Applications");
                 Console.WriteLine("4. Filter Applications by Job");
                 Console.WriteLine("5. Filter Applications by Status");
+                Console.WriteLine("6. Application Status Transitions");
 
                 if (isManagerOrAdmin)
                 {
-                    Console.WriteLine("6. Job Vacancy Management");
-                    Console.WriteLine("7. Hiring Decision (Accept / Reject)");
-                    Console.WriteLine("8. View Audit Logs");
-                    Console.WriteLine("9. Account Settings");
-                    Console.WriteLine("10. Logout");
+                    Console.WriteLine("7. Job Vacancy Management");
+                    Console.WriteLine("8. Requirement Management");
+                    Console.WriteLine("9. Hiring Decision (Accept / Reject)");
+                    Console.WriteLine("10. View Audit Logs");
+                    Console.WriteLine("11. Account Settings");
+                    Console.WriteLine("12. Logout");
                 }
                 else
                 {
-                    Console.WriteLine("6. View Audit Logs");
-                    Console.WriteLine("7. Account Settings");
-                    Console.WriteLine("8. Logout");
+                    Console.WriteLine("7. View Audit Logs");
+                    Console.WriteLine("8. Account Settings");
+                    Console.WriteLine("9. Logout");
                 }
 
                 Console.Write("\nChoose an option: ");
@@ -75,11 +81,13 @@ namespace HRAndApplicantSystem.Services
                         case "3": ViewAllApplications(); break;
                         case "4": FilterApplicationsByJob(); break;
                         case "5": FilterApplicationsByStatus(); break;
-                        case "6": jobVacancyService.ShowJobVacancyManagementMenu(); break;
-                        case "7": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
-                        case "8": ViewAuditLogs(); break;
-                        case "9": accountSettingsService.ShowAccountSettings(hrUsername); break;
-                        case "10":
+                        case "6": statusTransitionService.ShowStatusTransitionMenu(hrUsername); break;
+                        case "7": jobVacancyService.ShowJobVacancyManagementMenu(); break;
+                        case "8": requirementManagementService.ShowRequirementManagementMenu(); break;
+                        case "9": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
+                        case "10": ViewAuditLogs(); break;
+                        case "11": accountSettingsService.ShowAccountSettings(hrUsername); break;
+                        case "12":
                             running = false;
                             Console.WriteLine("\nLogging out...");
                             break;
@@ -98,9 +106,10 @@ namespace HRAndApplicantSystem.Services
                         case "3": ViewAllApplications(); break;
                         case "4": FilterApplicationsByJob(); break;
                         case "5": FilterApplicationsByStatus(); break;
-                        case "6": ViewAuditLogs(); break;
-                        case "7": accountSettingsService.ShowAccountSettings(hrUsername); break;
-                        case "8":
+                        case "6": statusTransitionService.ShowStatusTransitionMenu(hrUsername); break;
+                        case "7": ViewAuditLogs(); break;
+                        case "8": accountSettingsService.ShowAccountSettings(hrUsername); break;
+                        case "9":
                             running = false;
                             Console.WriteLine("\nLogging out...");
                             break;

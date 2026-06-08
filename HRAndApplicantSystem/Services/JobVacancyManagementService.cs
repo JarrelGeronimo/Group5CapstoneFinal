@@ -31,7 +31,7 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("1. View All Job Vacancies");
                 Console.WriteLine("2. Create New Job Vacancy");
                 Console.WriteLine("3. Edit Job Vacancy");
-                Console.WriteLine("4. Close Job Vacancy (Set Status to Closed)");
+                Console.WriteLine("4. View Job Requirements");
                 Console.WriteLine("5. Delete Job Vacancy");
                 Console.WriteLine("6. Back to Dashboard\n");
 
@@ -50,7 +50,7 @@ namespace HRAndApplicantSystem.Services
                         EditJobVacancy();
                         break;
                     case "4":
-                        CloseJobVacancy();
+                        EditJobRequirements();
                         break;
                     case "5":
                         DeleteJobVacancy();
@@ -206,152 +206,148 @@ namespace HRAndApplicantSystem.Services
 
             var selectedJob = vacancies[choice - 1];
 
-            // Show current details
+            // Show edit options for the selected job
+            bool editing = true;
+            while (editing)
+            {
+                Console.Clear();
+                Console.WriteLine("╔════════════════════════════════════════════════╗");
+                Console.WriteLine($"║   EDIT: {selectedJob.JobTitle,-36} ║");
+                Console.WriteLine("╚════════════════════════════════════════════════╝\n");
+
+                Console.WriteLine("What would you like to edit?\n");
+                Console.WriteLine("1. Job Title");
+                Console.WriteLine("2. Job Details");
+                Console.WriteLine("3. Status");
+                Console.WriteLine("4. Back\n");
+
+                Console.Write("Choose an option: ");
+                string fieldChoice = Console.ReadLine()?.Trim() ?? string.Empty;
+
+                switch (fieldChoice)
+                {
+                    case "1":
+                        EditJobTitle(selectedJob);
+                        break;
+                    case "2":
+                        EditJobDetails(selectedJob);
+                        break;
+                    case "3":
+                        EditJobStatus(selectedJob);
+                        break;
+                    case "4":
+                        editing = false;
+                        break;
+                    default:
+                        Console.WriteLine("Invalid option.");
+                        System.Threading.Thread.Sleep(1500);
+                        break;
+                }
+            }
+        }
+
+        private void EditJobTitle(JobVacancy job)
+        {
+            Console.Clear();
+            Console.WriteLine("╔════════════════════════════════════════════════╗");
+            Console.WriteLine("║   EDIT JOB TITLE                               ║");
+            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
+
+            Console.WriteLine($"Current Title: {job.JobTitle}\n");
+            Console.Write("Enter new Job Title: ");
+            string newTitle = Console.ReadLine()?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrEmpty(newTitle))
+            {
+                Console.WriteLine("Job title cannot be empty.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            if (newTitle.Length > 100)
+            {
+                Console.WriteLine("Job title cannot exceed 100 characters.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            job.JobTitle = newTitle;
+            if (db.UpdateJobVacancy(job))
+            {
+                Console.WriteLine("\n✓ Job title updated successfully!");
+            }
+            else
+            {
+                Console.WriteLine("\n✗ Failed to update job title.");
+            }
+            System.Threading.Thread.Sleep(1500);
+        }
+
+        private void EditJobDetails(JobVacancy job)
+        {
             Console.Clear();
             Console.WriteLine("╔════════════════════════════════════════════════╗");
             Console.WriteLine("║   EDIT JOB DETAILS                             ║");
             Console.WriteLine("╚════════════════════════════════════════════════╝\n");
 
-            Console.WriteLine($"Current Job Title: {selectedJob.JobTitle}");
-            Console.WriteLine($"Current Status: {selectedJob.Status}\n");
+            Console.WriteLine("Current Details:\n" + job.JobDetail + "\n");
+            Console.Write("Enter new Job Details:\n(Press Enter twice when done)\n");
+            string newDetails = GetMultilineInput();
 
-            // Get new job title
-            Console.Write("Enter new Job Title (press Enter to keep current): ");
-            string newTitle = Console.ReadLine()?.Trim() ?? string.Empty;
-            if (!string.IsNullOrEmpty(newTitle) && newTitle.Length > 100)
+            if (string.IsNullOrEmpty(newDetails))
             {
-                Console.WriteLine("Error: Job title cannot exceed 100 characters.");
-                System.Threading.Thread.Sleep(2000);
+                Console.WriteLine("Job details cannot be empty.");
+                System.Threading.Thread.Sleep(1500);
                 return;
             }
-            if (string.IsNullOrEmpty(newTitle))
-                newTitle = selectedJob.JobTitle;
 
-            // Get new job details
-            Console.Write("\nEnter new Job Details (press Enter to keep current):\n");
-            Console.Write("(Press Enter twice when done)\n");
-            string newDetail = GetMultilineInput();
-            if (string.IsNullOrEmpty(newDetail))
-                newDetail = selectedJob.JobDetail;
+            job.JobDetail = newDetails;
+            if (db.UpdateJobVacancy(job))
+            {
+                Console.WriteLine("\n✓ Job details updated successfully!");
+            }
+            else
+            {
+                Console.WriteLine("\n✗ Failed to update job details.");
+            }
+            System.Threading.Thread.Sleep(1500);
+        }
 
-            // Get new status
-            Console.Write("\nSelect new Status:\n");
+        private void EditJobStatus(JobVacancy job)
+        {
+            Console.Clear();
+            Console.WriteLine("╔════════════════════════════════════════════════╗");
+            Console.WriteLine("║   EDIT JOB STATUS                              ║");
+            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
+
+            Console.WriteLine($"Current Status: {job.Status}\n");
             Console.WriteLine("1. Open");
-            Console.WriteLine("2. Closed");
-            Console.Write("Choose status (press Enter to keep current): ");
+            Console.WriteLine("2. Closed\n");
+            Console.Write("Choose new status: ");
             string statusChoice = Console.ReadLine()?.Trim() ?? string.Empty;
 
-            string newStatus = selectedJob.Status;
+            string newStatus = null;
             if (statusChoice == "1")
                 newStatus = "Open";
             else if (statusChoice == "2")
                 newStatus = "Closed";
-
-            // Update the job
-            var updatedJob = new JobVacancy
+            else
             {
-                JobID = selectedJob.JobID,
-                JobTitle = newTitle,
-                JobDetail = newDetail,
-                Status = newStatus
-            };
+                Console.WriteLine("Invalid choice.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
 
-            if (db.UpdateJobVacancy(updatedJob))
+            job.Status = newStatus;
+            if (db.UpdateJobVacancy(job))
             {
-                Console.WriteLine("\n✓ Job vacancy updated successfully!");
-                Console.WriteLine($"  Job Title: {newTitle}");
-                Console.WriteLine($"  Status: {newStatus}");
+                Console.WriteLine($"\n✓ Job status updated to '{newStatus}' successfully!");
             }
             else
             {
-                Console.WriteLine("\n✗ Failed to update job vacancy. Please try again.");
+                Console.WriteLine("\n✗ Failed to update job status.");
             }
-
-            Console.WriteLine("\nPress any key to continue...");
-            Console.ReadKey();
-        }
-
-        /// <summary>
-        /// Closes a job vacancy (sets status to Closed)
-        /// </summary>
-        private void CloseJobVacancy()
-        {
-            Console.Clear();
-            Console.WriteLine("╔════════════════════════════════════════════════╗");
-            Console.WriteLine("║   CLOSE JOB VACANCY                            ║");
-            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
-
-            var vacancies = db.GetAllJobVacancies();
-            var openVacancies = new List<JobVacancy>();
-
-            // Filter only open vacancies
-            foreach (var job in vacancies)
-            {
-                if (job.Status == "Open")
-                    openVacancies.Add(job);
-            }
-
-            if (openVacancies.Count == 0)
-            {
-                Console.WriteLine("No open job vacancies available to close.\n");
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-                return;
-            }
-
-            // Display list of open jobs
-            Console.WriteLine("Open Job Vacancies:\n");
-            for (int i = 0; i < openVacancies.Count; i++)
-            {
-                Console.WriteLine($"{i + 1}. {openVacancies[i].JobTitle} (ID: {openVacancies[i].JobID})");
-            }
-
-            Console.WriteLine($"\n{openVacancies.Count + 1}. Back\n");
-            Console.Write("Select a job to close: ");
-
-            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice) || choice < 1 || choice > openVacancies.Count + 1)
-            {
-                Console.WriteLine("Invalid selection.");
-                System.Threading.Thread.Sleep(2000);
-                return;
-            }
-
-            if (choice == openVacancies.Count + 1)
-                return;
-
-            var selectedJob = openVacancies[choice - 1];
-
-            // Confirm closure
-            Console.Write($"\nAre you sure you want to close '{selectedJob.JobTitle}'? (yes/no): ");
-            string confirm = Console.ReadLine()?.Trim().ToLower() ?? string.Empty;
-
-            if (confirm != "yes" && confirm != "y")
-            {
-                Console.WriteLine("Operation cancelled.");
-                System.Threading.Thread.Sleep(2000);
-                return;
-            }
-
-            // Update status to Closed
-            var closedJob = new JobVacancy
-            {
-                JobID = selectedJob.JobID,
-                JobTitle = selectedJob.JobTitle,
-                JobDetail = selectedJob.JobDetail,
-                Status = "Closed"
-            };
-
-            if (db.UpdateJobVacancy(closedJob))
-            {
-                Console.WriteLine($"\n✓ Job vacancy '{selectedJob.JobTitle}' has been closed successfully!");
-            }
-            else
-            {
-                Console.WriteLine("\n✗ Failed to close job vacancy. Please try again.");
-            }
-
-            Console.WriteLine("\nPress any key to continue...");
-            Console.ReadKey();
+            System.Threading.Thread.Sleep(1500);
         }
 
         /// <summary>
@@ -419,6 +415,77 @@ namespace HRAndApplicantSystem.Services
             }
 
             Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+        }
+
+        /// <summary>
+        /// Edits the requirements for a specific job
+        /// </summary>
+        private void EditJobRequirements()
+        {
+            Console.Clear();
+            Console.WriteLine("╔════════════════════════════════════════════════╗");
+            Console.WriteLine("║   JOB REQUIREMENTS                             ║");
+            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
+
+            // Show available jobs
+            var vacancies = db.GetAllJobVacancies();
+
+            if (vacancies.Count == 0)
+            {
+                Console.WriteLine("No job vacancies available.\n");
+                Console.WriteLine("Press any key to continue...");
+                Console.ReadKey();
+                return;
+            }
+
+            // Display list of jobs
+            Console.WriteLine("Available Job Vacancies:\n");
+            for (int i = 0; i < vacancies.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {vacancies[i].JobTitle} (ID: {vacancies[i].JobID})");
+            }
+
+            Console.WriteLine($"\n{vacancies.Count + 1}. Back\n");
+            Console.Write("Select a job to view requirements: ");
+
+            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice) || choice < 1 || choice > vacancies.Count + 1)
+            {
+                Console.WriteLine("Invalid selection.");
+                System.Threading.Thread.Sleep(2000);
+                return;
+            }
+
+            if (choice == vacancies.Count + 1)
+                return;
+
+            var selectedJob = vacancies[choice - 1];
+
+            // Show requirements for the selected job
+            Console.Clear();
+            Console.WriteLine("╔════════════════════════════════════════════════╗");
+            Console.WriteLine($"║   REQUIREMENTS FOR: {selectedJob.JobTitle,-24} ║");
+            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
+
+            var requirements = db.GetJobSpecificRequirements(selectedJob.JobID);
+
+            if (requirements.Count == 0)
+            {
+                Console.WriteLine("No requirements found for this job.\n");
+            }
+            else
+            {
+                Console.WriteLine("Required Documents:\n");
+                for (int i = 0; i < requirements.Count; i++)
+                {
+                    var req = requirements[i];
+                    Console.WriteLine($"{i + 1}. {req.RequirementName}");
+                }
+                Console.WriteLine($"\nTotal: {requirements.Count} requirement(s)");
+            }
+
+            Console.WriteLine("\nNote: All jobs share the same requirement types from the system.\n");
+            Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
         }
 

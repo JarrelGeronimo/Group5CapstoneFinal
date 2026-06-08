@@ -423,6 +423,11 @@ namespace HRAndApplicantSystem.Database
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(username))
+                {
+                    return -1;
+                }
+
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
                     conn.Open();
@@ -431,7 +436,7 @@ namespace HRAndApplicantSystem.Database
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@username", username);
+                        cmd.Parameters.Add(new OleDbParameter("@username", username ?? (object)DBNull.Value));
 
                         object result = cmd.ExecuteScalar();
 
@@ -1413,6 +1418,55 @@ namespace HRAndApplicantSystem.Database
             return applications;
         }
 
+        public List<dynamic> GetAllApplications()
+        {
+            List<dynamic> applications = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
+                                           [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name],
+                                           [Applicants].[Last Name], [JobVacancies].[JobTitle]
+                                    FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                    INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                    WHERE [Applications].[Status] <> 'Draft'
+                                    ORDER BY [Applications].[DateApplied] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic app = new
+                                {
+                                    ApplicationID = Convert.ToInt32(reader[0]),
+                                    ApplicantID = Convert.ToInt32(reader[1]),
+                                    JobID = Convert.ToInt32(reader[2]),
+                                    Status = reader[3]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader[4]),
+                                    FirstName = reader[5]?.ToString() ?? "",
+                                    LastName = reader[6]?.ToString() ?? "",
+                                    JobTitle = reader[7]?.ToString() ?? ""
+                                };
+                                applications.Add(app);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving all applications: {ex.Message}");
+            }
+
+            return applications;
+        }
+
         public List<dynamic> GetApplicationsByJob(int jobID)
         {
             List<dynamic> applications = new List<dynamic>();
@@ -1813,6 +1867,424 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error changing username: {ex.Message}");
                 return false;
             }
+        }
+
+        // Application Filtering Methods
+        public List<dynamic> GetApplicationsByApplicantName(string applicantName)
+        {
+            try
+            {
+                List<dynamic> applications = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT a.[ApplicationID], a.[ApplicantID], a.[JobID], a.[Status], a.[DateApplied],
+                                           ap.[FirstName], ap.[LastName], j.[JobTitle]
+                                    FROM [Applications] a
+                                    INNER JOIN [Applicants] ap ON a.[ApplicantID] = ap.[ApplicantID]
+                                    INNER JOIN [JobVacancies] j ON a.[JobID] = j.[JobID]
+                                    WHERE ap.[FirstName] LIKE @name OR ap.[LastName] LIKE @name
+                                    ORDER BY a.[DateApplied] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@name", "%" + applicantName + "%");
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                applications.Add(new
+                                {
+                                    ApplicationID = reader[0],
+                                    ApplicantID = reader[1],
+                                    JobID = reader[2],
+                                    Status = reader[3],
+                                    DateApplied = reader[4],
+                                    FirstName = reader[5],
+                                    LastName = reader[6],
+                                    JobTitle = reader[7]
+                                });
+                            }
+                        }
+                    }
+                }
+                return applications;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applications by name: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
+
+        public List<dynamic> GetApplicationsByDateRange(DateTime startDate, DateTime endDate)
+        {
+            try
+            {
+                List<dynamic> applications = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT a.[ApplicationID], a.[ApplicantID], a.[JobID], a.[Status], a.[DateApplied],
+                                           ap.[FirstName], ap.[LastName], j.[JobTitle]
+                                    FROM [Applications] a
+                                    INNER JOIN [Applicants] ap ON a.[ApplicantID] = ap.[ApplicantID]
+                                    INNER JOIN [JobVacancies] j ON a.[JobID] = j.[JobID]
+                                    WHERE a.[DateApplied] >= @startDate AND a.[DateApplied] <= @endDate
+                                    ORDER BY a.[DateApplied] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.Add(new OleDbParameter("@startDate", OleDbType.Date)).Value = startDate;
+                        cmd.Parameters.Add(new OleDbParameter("@endDate", OleDbType.Date)).Value = endDate;
+                        
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                applications.Add(new
+                                {
+                                    ApplicationID = reader[0],
+                                    ApplicantID = reader[1],
+                                    JobID = reader[2],
+                                    Status = reader[3],
+                                    DateApplied = reader[4],
+                                    FirstName = reader[5],
+                                    LastName = reader[6],
+                                    JobTitle = reader[7]
+                                });
+                            }
+                        }
+                    }
+                }
+                return applications;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applications by date range: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
+
+        // Interview Management Methods
+        public bool CancelInterview(int scheduleID, string remarks, string cancelledBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // First, get application ID before cancelling
+                    string getAppQuery = "SELECT [ApplicationID] FROM [InterviewSchedules] WHERE [ScheduleID] = @scheduleID";
+                    int applicationID = 0;
+                    using (OleDbCommand cmd = new OleDbCommand(getAppQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@scheduleID", scheduleID);
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            applicationID = (int)result;
+                        }
+                        else
+                        {
+                            return false; // Schedule not found
+                        }
+                    }
+
+                    // Update interview status to Cancelled
+                    string updateScheduleQuery = "UPDATE [InterviewSchedules] SET [Status] = 'Cancelled' WHERE [ScheduleID] = @scheduleID";
+                    using (OleDbCommand cmd = new OleDbCommand(updateScheduleQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@scheduleID", scheduleID);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected == 0)
+                        {
+                            return false; // Update failed
+                        }
+                    }
+
+                    // Update application status back to Under Review
+                    string updateAppQuery = "UPDATE [Applications] SET [Status] = 'Under Review' WHERE [ApplicationID] = @appID";
+                    using (OleDbCommand cmd = new OleDbCommand(updateAppQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Record status change in history
+                    RecordStatusChange(applicationID, "Under Review", $"Interview cancelled: {remarks}", cancelledBy);
+                    
+                    // Log audit trail
+                    string userRole = GetRoleNameByUsername(cancelledBy);
+                    LogAuditTrail(userRole, cancelledBy, $"Cancelled Interview for Application #{applicationID}. Reason: {remarks}");
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error cancelling interview: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool RescheduleInterview(int scheduleID, DateTime newDateTime, string newLocation, string rescheduledBy)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string updateQuery = "UPDATE [InterviewSchedules] SET [InterviewDate] = @newDate, [InterviewTime] = @newTime, [Location] = @location WHERE [ScheduleID] = @scheduleID";
+                    using (OleDbCommand cmd = new OleDbCommand(updateQuery, conn))
+                    {
+                        cmd.Parameters.Add(new OleDbParameter("@newDate", OleDbType.Date)).Value = newDateTime.Date;
+                        cmd.Parameters.AddWithValue("@newTime", newDateTime.TimeOfDay);
+                        cmd.Parameters.AddWithValue("@location", newLocation);
+                        cmd.Parameters.AddWithValue("@scheduleID", scheduleID);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Get application ID for audit logging
+                    string getAppQuery = "SELECT [ApplicationID] FROM [InterviewSchedules] WHERE [ScheduleID] = @scheduleID";
+                    int applicationID = 0;
+                    using (OleDbCommand cmd = new OleDbCommand(getAppQuery, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@scheduleID", scheduleID);
+                        object result = cmd.ExecuteScalar();
+                        if (result != null && result != DBNull.Value)
+                        {
+                            applicationID = (int)result;
+                        }
+                    }
+
+                    if (applicationID > 0)
+                    {
+                        string userRole = GetRoleNameByUsername(rescheduledBy);
+                        LogAuditTrail(userRole, rescheduledBy, $"Rescheduled Interview for Application #{applicationID} to {newDateTime:MMMM dd, yyyy HH:mm} at {newLocation}");
+                    }
+
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error rescheduling interview: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Get interview details for a specific application
+        public dynamic GetScheduledInterview(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [ScheduleID], [InterviewDate], [InterviewTime], [Interviewer], [Location], [Status]
+                                    FROM [InterviewSchedules]
+                                    WHERE [ApplicationID] = @appID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new
+                                {
+                                    ScheduleID = reader[0],
+                                    InterviewDate = reader[1],
+                                    InterviewTime = reader[2],
+                                    Interviewer = reader[3],
+                                    Location = reader[4],
+                                    Status = reader[5]
+                                };
+                            }
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving scheduled interview: {ex.Message}");
+                return null;
+            }
+        }
+
+        // =============== REQUIREMENT MANAGEMENT METHODS ===============
+
+        public List<dynamic> GetAllRequirementTypes()
+        {
+            List<dynamic> requirements = new List<dynamic>();
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = @"SELECT [RequirementTypeID], [RequirementName] 
+                                    FROM [RequirementTypes] 
+                                    ORDER BY [RequirementName]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                requirements.Add(new
+                                {
+                                    RequirementTypeID = Convert.ToInt32(reader["RequirementTypeID"]),
+                                    RequirementName = reader["RequirementName"]?.ToString() ?? ""
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving requirement types: {ex.Message}");
+            }
+            return requirements;
+        }
+
+        public List<dynamic> GetJobSpecificRequirements(int jobID)
+        {
+            // All jobs share the same requirements from RequirementTypes table
+            // Database has no JobRequirements table for per-job customization
+            return GetAllRequirementTypes();
+        }
+
+        public bool AddRequirementType(string requirementName)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = @"INSERT INTO [RequirementTypes] ([RequirementName]) 
+                                    VALUES (@requirementName)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@requirementName", requirementName);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error adding requirement type: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool RemoveRequirementType(int requirementTypeID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = @"DELETE FROM [RequirementTypes] WHERE [RequirementTypeID] = @id";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", requirementTypeID);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error removing requirement type: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool CheckAllJobRequirementsSubmitted(int applicantID, int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // All jobs require all requirement types from RequirementTypes table
+                    var requiredRequirements = GetAllRequirementTypes();
+                    
+                    if (requiredRequirements.Count == 0)
+                    {
+                        return true; // No requirements, can submit
+                    }
+
+                    // Check if all requirements have been submitted
+                    foreach (var req in requiredRequirements)
+                    {
+                        string query = @"SELECT COUNT(*) FROM [ApplicantDocuments] 
+                                        WHERE [ApplicantID] = @applicantID 
+                                        AND [RequirementTypeID] = @requirementTypeID 
+                                        AND [DocumentStatus] = 'Submitted'";
+
+                        using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@applicantID", applicantID);
+                            cmd.Parameters.AddWithValue("@requirementTypeID", req.RequirementTypeID);
+                            int count = (int)cmd.ExecuteScalar();
+                            
+                            if (count == 0)
+                            {
+                                return false; // At least one required document not submitted
+                            }
+                        }
+                    }
+
+                    return true; // All requirements submitted
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking requirements: {ex.Message}");
+                return false;
+            }
+        }
+
+        // =============== JOB-SPECIFIC REQUIREMENT MANAGEMENT ===============
+
+        public List<dynamic> GetJobSpecificRequirementsWithStatus(int jobID)
+        {
+            // Since all jobs share the same requirements, just return all requirement types
+            return GetAllRequirementTypes();
+        }
+
+        public List<dynamic> GetJobRequirementsOnly(int jobID)
+        {
+            // All jobs share the same requirements from RequirementTypes table
+            // Database has no JobRequirements table for per-job customization
+            return GetAllRequirementTypes();
+        }
+
+        public bool AddJobRequirement(int jobID, int requirementTypeID)
+        {
+            // No JobRequirements table exists - all jobs share the same requirements
+            return false;
+        }
+
+        public bool RemoveJobRequirement(int jobID, int requirementTypeID)
+        {
+            // No JobRequirements table exists - all jobs share the same requirements
+            return false;
         }
     }
 }

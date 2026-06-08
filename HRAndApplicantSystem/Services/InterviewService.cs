@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -24,7 +25,9 @@ namespace HRAndApplicantSystem.Services
 
                 Console.WriteLine("1. Schedule Interview (Shortlisted Applicants)");
                 Console.WriteLine("2. Evaluate Interview (For Interview Applicants)");
-                Console.WriteLine("3. Back to Dashboard");
+                Console.WriteLine("3. Cancel Interview");
+                Console.WriteLine("4. Reschedule Interview");
+                Console.WriteLine("5. Back to Dashboard");
                 Console.Write("\nChoose an option: ");
 
                 string choice = Console.ReadLine()?.Trim() ?? string.Empty;
@@ -38,6 +41,12 @@ namespace HRAndApplicantSystem.Services
                         EvaluateInterview(hrUsername);
                         break;
                     case "3":
+                        CancelInterview(hrUsername);
+                        break;
+                    case "4":
+                        RescheduleInterview(hrUsername);
+                        break;
+                    case "5":
                         running = false;
                         break;
                     default:
@@ -291,6 +300,187 @@ namespace HRAndApplicantSystem.Services
             }
 
             Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
+        }
+
+        // ── Cancel Interview ─────────────────────────────────
+        private void CancelInterview(string hrUsername)
+        {
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     CANCEL INTERVIEW                         ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+            var scheduled = db.GetApplicationsByStatus("Interview Scheduled");
+
+            if (scheduled.Count == 0)
+            {
+                Console.WriteLine("No scheduled interviews available.\n");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine($"{"#",-3} {"Name",-22} {"Job Title",-25} {"Applied",-12}");
+            Console.WriteLine(new string('-', 65));
+
+            for (int i = 0; i < scheduled.Count; i++)
+            {
+                var app = scheduled[i];
+                string name = $"{app.FirstName} {app.LastName}";
+                string jobTitle = ((string)app.JobTitle).Length > 24
+                    ? ((string)app.JobTitle).Substring(0, 24)
+                    : (string)app.JobTitle;
+                string date = ((DateTime)app.DateApplied).ToString("yyyy-MM-dd");
+                Console.WriteLine($"{i + 1,-3} {name,-22} {jobTitle,-25} {date,-12}");
+            }
+
+            Console.WriteLine($"\n{scheduled.Count + 1}. Back");
+            Console.Write("\nSelect interview to cancel: ");
+
+            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice)
+                || choice < 1 || choice > scheduled.Count)
+            {
+                return;
+            }
+
+            var selected = scheduled[choice - 1];
+            var interview = db.GetScheduledInterview(selected.ApplicationID);
+
+            if (interview == null)
+            {
+                Console.WriteLine("❌ Interview details not found.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     CONFIRM CANCELLATION                    ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+            Console.WriteLine($"Applicant: {selected.FirstName} {selected.LastName}");
+            Console.WriteLine($"Position: {selected.JobTitle}");
+            Console.WriteLine($"Scheduled: {((DateTime)interview.InterviewDate):MMMM dd, yyyy} {((DateTime)interview.InterviewTime):HH:mm}");
+
+            string reason = InputValidator.GetValidatedInput("\nReason for cancellation: ", "Reason");
+
+            bool success = db.CancelInterview((int)interview.ScheduleID, reason, hrUsername);
+
+            if (success)
+            {
+                Console.WriteLine($"\n✅ Interview cancelled successfully!");
+            }
+            else
+            {
+                Console.WriteLine("\n❌ Failed to cancel interview.");
+            }
+
+            Console.ReadKey();
+        }
+
+        // ── Reschedule Interview ────────────────────────────
+        private void RescheduleInterview(string hrUsername)
+        {
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     RESCHEDULE INTERVIEW                     ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+            var scheduled = db.GetApplicationsByStatus("Interview Scheduled");
+
+            if (scheduled.Count == 0)
+            {
+                Console.WriteLine("No scheduled interviews available.\n");
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.WriteLine($"{"#",-3} {"Name",-22} {"Job Title",-25} {"Applied",-12}");
+            Console.WriteLine(new string('-', 65));
+
+            for (int i = 0; i < scheduled.Count; i++)
+            {
+                var app = scheduled[i];
+                string name = $"{app.FirstName} {app.LastName}";
+                string jobTitle = ((string)app.JobTitle).Length > 24
+                    ? ((string)app.JobTitle).Substring(0, 24)
+                    : (string)app.JobTitle;
+                string date = ((DateTime)app.DateApplied).ToString("yyyy-MM-dd");
+                Console.WriteLine($"{i + 1,-3} {name,-22} {jobTitle,-25} {date,-12}");
+            }
+
+            Console.WriteLine($"\n{scheduled.Count + 1}. Back");
+            Console.Write("\nSelect interview to reschedule: ");
+
+            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice)
+                || choice < 1 || choice > scheduled.Count)
+            {
+                return;
+            }
+
+            var selected = scheduled[choice - 1];
+            var interview = db.GetScheduledInterview(selected.ApplicationID);
+
+            if (interview == null)
+            {
+                Console.WriteLine("❌ Interview details not found.");
+                Console.ReadKey();
+                return;
+            }
+
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     RESCHEDULE INTERVIEW                     ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+            Console.WriteLine($"Applicant: {selected.FirstName} {selected.LastName}");
+            Console.WriteLine($"Position: {selected.JobTitle}");
+            Console.WriteLine($"Current: {((DateTime)interview.InterviewDate):MMMM dd, yyyy} {((DateTime)interview.InterviewTime):HH:mm}\n");
+
+            // Get new date
+            DateTime newDateTime = DateTime.Now;
+            while (true)
+            {
+                Console.Write("Enter new interview date (yyyy-MM-dd): ");
+                string dateInput = Console.ReadLine()?.Trim() ?? string.Empty;
+                if (DateTime.TryParse(dateInput, out DateTime parsedDate))
+                {
+                    newDateTime = parsedDate;
+                    break;
+                }
+                Console.WriteLine("Invalid date format. Please use yyyy-MM-dd.");
+            }
+
+            // Get new time
+            while (true)
+            {
+                Console.Write("Enter new interview time (HH:mm): ");
+                string timeInput = Console.ReadLine()?.Trim() ?? string.Empty;
+                if (DateTime.TryParse(timeInput, out DateTime parsedTime))
+                {
+                    newDateTime = newDateTime.Date.Add(parsedTime.TimeOfDay);
+                    break;
+                }
+                Console.WriteLine("Invalid time format. Please use HH:mm.");
+            }
+
+            string location = InputValidator.GetValidatedInput("Enter interview location: ", "Location");
+
+            bool success = db.RescheduleInterview((int)interview.ScheduleID, newDateTime, location, hrUsername);
+
+            if (success)
+            {
+                Console.WriteLine($"\n✅ Interview rescheduled successfully!");
+                Console.WriteLine($"New date: {newDateTime:MMMM dd, yyyy HH:mm}");
+                Console.WriteLine($"Location: {location}");
+            }
+            else
+            {
+                Console.WriteLine("\n❌ Failed to reschedule interview.");
+            }
+
             Console.ReadKey();
         }
     }
