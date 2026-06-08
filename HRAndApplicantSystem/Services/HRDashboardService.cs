@@ -13,6 +13,8 @@ namespace HRAndApplicantSystem.Services
         private readonly AuditLogService auditLogService;
         private readonly AccountSettingsService accountSettingsService;
         private readonly ApplicationStatusTransitionService statusTransitionService;
+        private readonly ReportsService reportsService;
+        private readonly ApplicantSearchService applicantSearchService;
         private readonly RequirementManagementService requirementManagementService;
 
         public HRDashboardService()
@@ -24,6 +26,8 @@ namespace HRAndApplicantSystem.Services
             jobVacancyService = new JobVacancyManagementService();
             auditLogService = new AuditLogService();
             accountSettingsService = new AccountSettingsService();
+            reportsService = new ReportsService(); 
+            applicantSearchService = new ApplicantSearchService();
             statusTransitionService = new ApplicationStatusTransitionService();
             requirementManagementService = new RequirementManagementService();
         }
