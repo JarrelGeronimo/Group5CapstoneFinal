@@ -169,7 +169,7 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine($"  Date     : {fullDateTime:MMMM dd, yyyy HH:mm}");
                 Console.WriteLine($"  Mode     : {mode}");
                 Console.WriteLine($"  Location : {location}");
-                Console.WriteLine($"  Status updated to: For Interview");
+                Console.WriteLine($"  Status updated to: Interview Scheduled");
             }
             else
             {
@@ -188,7 +188,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     EVALUATE INTERVIEW                       ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var forInterview = db.GetApplicationsByStatus("For Interview");
+            var forInterview = db.GetApplicationsByStatus("Interview Scheduled");
 
             if (forInterview.Count == 0)
             {

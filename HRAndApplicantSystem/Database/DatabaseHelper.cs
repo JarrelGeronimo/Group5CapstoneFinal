@@ -306,6 +306,47 @@ namespace HRAndApplicantSystem.Database
             return null;
         }
 
+        public Applicant GetApplicantByID(int applicantID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [ApplicantID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills] FROM [Applicants] WHERE [ApplicantID] = @applicantID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new Applicant
+                                {
+                                    ApplicantID = reader["ApplicantID"] != DBNull.Value ? Convert.ToInt32(reader["ApplicantID"]) : 0,
+                                    FirstName = reader["First Name"]?.ToString() ?? "",
+                                    LastName = reader["Last Name"]?.ToString() ?? "",
+                                    ContactNo = reader["ContactNo"]?.ToString() ?? "",
+                                    Address = reader["Address"]?.ToString() ?? "",
+                                    Education = reader["Education"]?.ToString() ?? "",
+                                    Skills = reader["Skills"]?.ToString() ?? ""
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applicant info: {ex.Message}");
+            }
+
+            return null;
+        }
+
         public bool UpdateApplicantInfo(string username, Applicant applicant)
         {
             try
@@ -445,6 +486,154 @@ namespace HRAndApplicantSystem.Database
             }
 
             return vacancies;
+        }
+
+        public JobVacancy GetJobVacancyByID(int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] WHERE [JobID] = @jobID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@jobID", jobID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new JobVacancy
+                                {
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? "",
+                                    JobDetail = reader["JobDetail"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? ""
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving job vacancy: {ex.Message}");
+            }
+
+            return null;
+        }
+
+        public bool HasApplicantAppliedForJob(int applicantID, int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Check if applicant has a non-Draft application for this job
+                    string checkQuery = "SELECT COUNT(*) FROM [Applications] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [Status] <> 'Draft'";
+
+                    using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
+                    {
+                        OleDbParameter applicantParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantParam.Value = applicantID;
+                        checkCmd.Parameters.Add(applicantParam);
+
+                        OleDbParameter jobParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobParam.Value = jobID;
+                        checkCmd.Parameters.Add(jobParam);
+
+                        int count = Convert.ToInt32(checkCmd.ExecuteScalar());
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking application status: {ex.Message}");
+                return false;
+            }
+        }
+
+        public int CreateDraftApplication(int applicantID, int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Check if a draft already exists for this job
+                    string checkQuery = "SELECT [ApplicationID] FROM [Applications] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [Status] = 'Draft'";
+
+                    using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
+                    {
+                        OleDbParameter applicantParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantParam.Value = applicantID;
+                        checkCmd.Parameters.Add(applicantParam);
+
+                        OleDbParameter jobParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobParam.Value = jobID;
+                        checkCmd.Parameters.Add(jobParam);
+
+                        var existingDraft = checkCmd.ExecuteScalar();
+                        if (existingDraft != null)
+                        {
+                            // Return existing draft ID
+                            return Convert.ToInt32(existingDraft);
+                        }
+                    }
+
+                    // Create new draft application
+                    string insertQuery = "INSERT INTO [Applications] ([ApplicantID], [JobID], [Status], [DateApplied]) VALUES (@applicantID, @jobID, @status, @dateApplied)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
+                    {
+                        OleDbParameter applicantInsertParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantInsertParam.Value = applicantID;
+                        cmd.Parameters.Add(applicantInsertParam);
+
+                        OleDbParameter jobInsertParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobInsertParam.Value = jobID;
+                        cmd.Parameters.Add(jobInsertParam);
+
+                        OleDbParameter statusParam = new OleDbParameter("@status", OleDbType.VarWChar);
+                        statusParam.Value = "Draft";
+                        cmd.Parameters.Add(statusParam);
+
+                        OleDbParameter dateParam = new OleDbParameter("@dateApplied", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        if (rowsAffected > 0)
+                        {
+                            // Get the inserted ApplicationID
+                            string getIdQuery = "SELECT [ApplicationID] FROM [Applications] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [Status] = 'Draft'";
+                            using (OleDbCommand getIdCmd = new OleDbCommand(getIdQuery, conn))
+                            {
+                                getIdCmd.Parameters.Add(new OleDbParameter("@applicantID", applicantID));
+                                getIdCmd.Parameters.Add(new OleDbParameter("@jobID", jobID));
+                                var result = getIdCmd.ExecuteScalar();
+                                return result != null ? Convert.ToInt32(result) : -1;
+                            }
+                        }
+                        else
+                        {
+                            return -1;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating draft application: {ex.Message}");
+                return -1;
+            }
         }
 
         public bool SubmitJobApplication(int applicantID, int jobID)
@@ -736,7 +925,7 @@ namespace HRAndApplicantSystem.Database
                                            [Applicants].[Last Name], [Applicants].[ContactNo], [JobVacancies].[JobTitle]
                                     FROM ([Applications] INNER JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
                                     INNER JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
-                                    WHERE [Applications].[Status] = 'Submitted'
+                                    WHERE [Applications].[Status] = 'Submitted' OR [Applications].[Status] = 'Under Review'
                                     ORDER BY [Applications].[DateApplied]";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
@@ -853,17 +1042,20 @@ namespace HRAndApplicantSystem.Database
 
                     using (OleDbCommand screenCmd = new OleDbCommand(screeningQuery, conn))
                     {
-                        screenCmd.Parameters.AddWithValue("@appID", applicationID);
-                        screenCmd.Parameters.AddWithValue("@result", result);
-                        screenCmd.Parameters.AddWithValue("@remarks", remarks);
-                        screenCmd.Parameters.AddWithValue("@screenedBy", hrUsername);
-                        screenCmd.Parameters.AddWithValue("@dateScreened", DateTime.Now);
+                        screenCmd.Parameters.Add(new OleDbParameter("@appID", applicationID));
+                        screenCmd.Parameters.Add(new OleDbParameter("@result", result));
+                        screenCmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
+                        screenCmd.Parameters.Add(new OleDbParameter("@screenedBy", hrUsername));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@dateScreened", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        screenCmd.Parameters.Add(dateParam);
 
                         screenCmd.ExecuteNonQuery();
                     }
 
                     // Record status history
-                    RecordStatusChange(applicationID, "Under Review", $"Screened by HR: {result}", hrUsername);
+                    RecordStatusChange(applicationID, newStatus, $"Screened by HR: {result}", hrUsername);
 
                     return true;
                 }
@@ -908,6 +1100,31 @@ namespace HRAndApplicantSystem.Database
             return false;
         }
 
+        public bool DeleteApplication(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "DELETE FROM [Applications] WHERE [ApplicationID] = @applicationID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicationID", applicationID);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting application: {ex.Message}");
+                return false;
+            }
+        }
+
         public bool RecordStatusChange(int applicationID, string status, string remarks, string changedBy)
         {
             try
@@ -920,11 +1137,15 @@ namespace HRAndApplicantSystem.Database
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("@appID", applicationID);
-                        cmd.Parameters.AddWithValue("@status", status);
-                        cmd.Parameters.AddWithValue("@remarks", remarks);
-                        cmd.Parameters.AddWithValue("@dateChanged", DateTime.Now);
-                        cmd.Parameters.AddWithValue("@changedBy", changedBy);
+                        cmd.Parameters.Add(new OleDbParameter("@appID", applicationID));
+                        cmd.Parameters.Add(new OleDbParameter("@status", status));
+                        cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@dateChanged", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+                        
+                        cmd.Parameters.Add(new OleDbParameter("@changedBy", changedBy));
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
@@ -1051,23 +1272,22 @@ namespace HRAndApplicantSystem.Database
 
                     // Insert into InterviewSchedules
                     string insertQuery = @"INSERT INTO [InterviewSchedules] 
-                        ([ApplicationID], [InterviewDate], [Interviewer], [Mode], [Location], [Status], [ScheduledBy])
-                        VALUES (@appID, @date, @interviewer, @mode, @location, @status, @scheduledBy)";
+                        ([ApplicationID], [InterviewDate], [InterviewTime], [Interviewer], [Location], [Status])
+                        VALUES (@appID, @date, @time, @interviewer, @location, @status)";
 
                     using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
                     {
                         cmd.Parameters.AddWithValue("@appID", applicationID);
-                        cmd.Parameters.AddWithValue("@date", interviewDateTime);
+                        cmd.Parameters.AddWithValue("@date", interviewDateTime.Date);
+                        cmd.Parameters.AddWithValue("@time", interviewDateTime.TimeOfDay);
                         cmd.Parameters.AddWithValue("@interviewer", interviewer);
-                        cmd.Parameters.AddWithValue("@mode", mode);
                         cmd.Parameters.AddWithValue("@location", location);
                         cmd.Parameters.AddWithValue("@status", "Scheduled");
-                        cmd.Parameters.AddWithValue("@scheduledBy", scheduledBy);
                         cmd.ExecuteNonQuery();
                     }
 
-                    // Update application status to For Interview
-                    string updateQuery = "UPDATE [Applications] SET [Status] = 'For Interview' WHERE [ApplicationID] = @appID";
+                    // Update application status to Interview Scheduled
+                    string updateQuery = "UPDATE [Applications] SET [Status] = 'Interview Scheduled' WHERE [ApplicationID] = @appID";
                     using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
                     {
                         updateCmd.Parameters.AddWithValue("@appID", applicationID);
@@ -1075,7 +1295,7 @@ namespace HRAndApplicantSystem.Database
                     }
 
                     // Record status history
-                    RecordStatusChange(applicationID, "For Interview",
+                    RecordStatusChange(applicationID, "Interview Scheduled",
                         $"Interview scheduled on {interviewDateTime:MMMM dd, yyyy HH:mm}", scheduledBy);
 
                     return true;
@@ -1086,6 +1306,50 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error scheduling interview: {ex.Message}");
                 return false;
             }
+        }
+
+        public dynamic GetInterviewSchedule(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [ScheduleID], [ApplicationID], [InterviewDate], [InterviewTime], 
+                                           [Interviewer], [Location], [Status]
+                                    FROM [InterviewSchedules]
+                                    WHERE [ApplicationID] = @appID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@appID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new
+                                {
+                                    ScheduleID = reader["ScheduleID"],
+                                    ApplicationID = reader["ApplicationID"],
+                                    InterviewDate = reader["InterviewDate"],
+                                    InterviewTime = reader["InterviewTime"],
+                                    Interviewer = reader["Interviewer"],
+                                    Location = reader["Location"],
+                                    Status = reader["Status"]
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving interview schedule: {ex.Message}");
+            }
+
+            return null;
         }
 
          // Evaluate Interview 
@@ -1100,17 +1364,20 @@ namespace HRAndApplicantSystem.Database
 
                     // Insert into InterviewEvaluations
                     string insertQuery = @"INSERT INTO [InterviewEvaluations]
-                        ([ApplicationID], [Score], [Result], [Remarks], [EvaluatedBy], [DateEvaluated])
-                        VALUES (@appID, @score, @result, @remarks, @evaluatedBy, @dateEvaluated)";
+                        ([ApplicationID], [Score], [Result], [Remarks], [DateEvaluated])
+                        VALUES (@appID, @score, @result, @remarks, @dateEvaluated)";
 
                     using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
                     {
-                        cmd.Parameters.AddWithValue("@appID", applicationID);
-                        cmd.Parameters.AddWithValue("@score", score);
-                        cmd.Parameters.AddWithValue("@result", result);
-                        cmd.Parameters.AddWithValue("@remarks", remarks);
-                        cmd.Parameters.AddWithValue("@evaluatedBy", evaluatedBy);
-                        cmd.Parameters.AddWithValue("@dateEvaluated", DateTime.Now);
+                        cmd.Parameters.Add(new OleDbParameter("@appID", applicationID));
+                        cmd.Parameters.Add(new OleDbParameter("@score", score));
+                        cmd.Parameters.Add(new OleDbParameter("@result", result));
+                        cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@dateEvaluated", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+                        
                         cmd.ExecuteNonQuery();
                     }
 
@@ -1157,16 +1424,20 @@ namespace HRAndApplicantSystem.Database
 
                     // Insert into HiringDecisions
                     string insertQuery = @"INSERT INTO [HiringDecisions]
-                        ([ApplicationID], [Decision], [Remarks], [DecidedBy], [DateDecided])
+                        ([ApplicationID], [Decision], [Remarks], [DecisionBy], [DecisionDate])
                         VALUES (@appID, @decision, @remarks, @decidedBy, @dateDecided)";
 
                     using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
                     {
-                        cmd.Parameters.AddWithValue("@appID", applicationID);
-                        cmd.Parameters.AddWithValue("@decision", decision);
-                        cmd.Parameters.AddWithValue("@remarks", remarks);
-                        cmd.Parameters.AddWithValue("@decidedBy", decidedBy);
-                        cmd.Parameters.AddWithValue("@dateDecided", DateTime.Now);
+                        cmd.Parameters.Add(new OleDbParameter("@appID", applicationID));
+                        cmd.Parameters.Add(new OleDbParameter("@decision", decision));
+                        cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
+                        cmd.Parameters.Add(new OleDbParameter("@decidedBy", decidedBy));
+                        
+                        OleDbParameter dateParam = new OleDbParameter("@dateDecided", OleDbType.Date);
+                        dateParam.Value = DateTime.Now;
+                        cmd.Parameters.Add(dateParam);
+                        
                         cmd.ExecuteNonQuery();
                     }
 

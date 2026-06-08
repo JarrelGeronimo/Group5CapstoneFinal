@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
+using System.Linq;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -61,7 +62,10 @@ namespace HRAndApplicantSystem.Services
 
         private void ViewAllJobs(Applicant applicant)
         {
-            DisplayJobs(db.GetAllJobVacancies(), applicant);
+            // Only show Open jobs to applicants
+            var allJobs = db.GetAllJobVacancies();
+            var openJobs = allJobs.Where(j => j.Status == "Open").ToList();
+            DisplayJobs(openJobs, applicant);
         }
 
         private void SearchJobsByTitle(Applicant applicant)
@@ -77,13 +81,14 @@ namespace HRAndApplicantSystem.Services
             }
 
             var allJobs = db.GetAllJobVacancies();
+            // Only search within Open jobs
             var filteredJobs = allJobs
-                .Where(j => j.JobTitle.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .Where(j => j.Status == "Open" && j.JobTitle.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             if (filteredJobs.Count == 0)
             {
-                Console.WriteLine($"\nNo jobs found matching '{searchTerm}'.");
+                Console.WriteLine($"\nNo open jobs found matching '{searchTerm}'.");
                 System.Threading.Thread.Sleep(2000);
                 return;
             }
@@ -206,32 +211,27 @@ namespace HRAndApplicantSystem.Services
 
         private void ApplyForJob(int applicantId, JobVacancy job, Applicant applicant)
         {
-            if (db.SubmitJobApplication(applicantId, job.JobID))
+            // Check if job is still open for applications
+            if (job.Status != "Open")
             {
-                Console.WriteLine($"\n✓ Successfully applied for {job.JobTitle}!");
-                Console.WriteLine("Your application has been submitted to HR for review.\n");
-
-                // Show job requirements and allow document submission
-                Console.WriteLine("This job has document requirements.\n");
-                Console.Write("Would you like to submit required documents now? (yes/no): ");
-                string choice = (Console.ReadLine()?.Trim() ?? "no").ToLower();
-
-                if (choice == "yes" || choice == "y")
-                {
-                    DocumentSubmissionService docService = new DocumentSubmissionService();
-                    docService.ManageDocumentSubmissions(applicantId, job.JobID);
-                    Console.WriteLine("\nYour documents have been saved. You can update them anytime from your dashboard.");
-                }
-                else
-                {
-                    Console.WriteLine("You can submit documents later from 'View My Applications'.");
-                }
+                Console.WriteLine($"\n✗ The position {job.JobTitle} is no longer accepting applications.");
+                Console.WriteLine($"Current Status: {job.Status}");
+                System.Threading.Thread.Sleep(2000);
+                return;
             }
-            else
+
+            // Check if applicant has already applied for this job
+            if (db.HasApplicantAppliedForJob(applicantId, job.JobID))
             {
-                Console.WriteLine($"\n✗ Failed to submit application.");
-                Console.WriteLine("You may have already applied for this job.");
+                Console.WriteLine($"\n✗ You have already applied for {job.JobTitle}.");
+                Console.WriteLine("You cannot apply for the same position twice.");
+                System.Threading.Thread.Sleep(2000);
+                return;
             }
+
+            // Use the new drafting service to let applicants prepare their application before submitting
+            ApplicationDraftingService draftingService = new ApplicationDraftingService();
+            draftingService.DraftAndSubmitApplication(job, applicant);
         }
     }
 }

@@ -9,13 +9,15 @@ namespace HRAndApplicantSystem.Services
         private readonly ScreeningService screeningService;
         private readonly InterviewService interviewService;
         private readonly HiringDecisionService hiringDecisionService;
+        private readonly JobVacancyManagementService jobVacancyService;
 
         public HRDashboardService()
         {
             db = new DatabaseHelper();
             screeningService = new ScreeningService();
             interviewService = new InterviewService();
-            hiringDecisionService = new HiringDecisionService();  
+            hiringDecisionService = new HiringDecisionService();
+            jobVacancyService = new JobVacancyManagementService();
         }
 
         public void ShowDashboard(string hrUsername)
@@ -44,8 +46,9 @@ namespace HRAndApplicantSystem.Services
 
                 if (isManagerOrAdmin)
                 {
-                    Console.WriteLine("6. Hiring Decision (Accept / Reject)");
-                    Console.WriteLine("7. Logout");
+                    Console.WriteLine("6. Job Vacancy Management");
+                    Console.WriteLine("7. Hiring Decision (Accept / Reject)");
+                    Console.WriteLine("8. Logout");
                 }
                 else
                 {
@@ -64,8 +67,9 @@ namespace HRAndApplicantSystem.Services
                         case "3": ViewAllApplications(); break;
                         case "4": FilterApplicationsByJob(); break;
                         case "5": FilterApplicationsByStatus(); break;
-                        case "6": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
-                        case "7":
+                        case "6": jobVacancyService.ShowJobVacancyManagementMenu(); break;
+                        case "7": hiringDecisionService.ShowHiringDecisionMenu(hrUsername); break;
+                        case "8":
                             running = false;
                             Console.WriteLine("\nLogging out...");
                             break;
@@ -144,26 +148,26 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     ALL APPLICATIONS                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var submitted     = db.GetApplicationsByStatus("Submitted");
-            var shortlisted   = db.GetApplicationsByStatus("Shortlisted");
-            var forInterview  = db.GetApplicationsByStatus("For Interview");
-            var forFinalReview= db.GetApplicationsByStatus("For Final Review");
-            var accepted      = db.GetApplicationsByStatus("Accepted");
-            var rejected      = db.GetApplicationsByStatus("Rejected");
+            var submitted       = db.GetApplicationsByStatus("Submitted");
+            var underReview     = db.GetApplicationsByStatus("Under Review");
+            var shortlisted     = db.GetApplicationsByStatus("Shortlisted");
+            var interviewScheduled = db.GetApplicationsByStatus("Interview Scheduled");
+            var accepted        = db.GetApplicationsByStatus("Accepted");
+            var rejected        = db.GetApplicationsByStatus("Rejected");
 
-            Console.WriteLine($"Submitted       : {submitted.Count}");
-            Console.WriteLine($"Shortlisted     : {shortlisted.Count}");
-            Console.WriteLine($"For Interview   : {forInterview.Count}");
-            Console.WriteLine($"For Final Review: {forFinalReview.Count}");
-            Console.WriteLine($"Accepted        : {accepted.Count}");
-            Console.WriteLine($"Rejected        : {rejected.Count}\n");
+            Console.WriteLine($"Submitted            : {submitted.Count}");
+            Console.WriteLine($"Under Review         : {underReview.Count}");
+            Console.WriteLine($"Shortlisted          : {shortlisted.Count}");
+            Console.WriteLine($"Interview Scheduled  : {interviewScheduled.Count}");
+            Console.WriteLine($"Accepted             : {accepted.Count}");
+            Console.WriteLine($"Rejected             : {rejected.Count}\n");
 
-            DisplayApplicationsList(submitted,      "Submitted");
-            DisplayApplicationsList(shortlisted,    "Shortlisted");
-            DisplayApplicationsList(forInterview,   "For Interview");
-            DisplayApplicationsList(forFinalReview, "For Final Review");
-            DisplayApplicationsList(accepted,       "Accepted");
-            DisplayApplicationsList(rejected,       "Rejected");
+            DisplayApplicationsList(submitted,       "Submitted");
+            DisplayApplicationsList(underReview,     "Under Review");
+            DisplayApplicationsList(shortlisted,     "Shortlisted");
+            DisplayApplicationsList(interviewScheduled, "Interview Scheduled");
+            DisplayApplicationsList(accepted,        "Accepted");
+            DisplayApplicationsList(rejected,        "Rejected");
 
             Console.WriteLine("\nPress any key to return...");
             Console.ReadKey();
@@ -219,11 +223,10 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("1. Submitted");
             Console.WriteLine("2. Under Review");
             Console.WriteLine("3. Shortlisted");
-            Console.WriteLine("4. For Interview");
-            Console.WriteLine("5. For Final Review");
-            Console.WriteLine("6. Accepted");
-            Console.WriteLine("7. Rejected");
-            Console.WriteLine("8. Back");
+            Console.WriteLine("4. Interview Scheduled");
+            Console.WriteLine("5. Accepted");
+            Console.WriteLine("6. Rejected");
+            Console.WriteLine("7. Back");
             
 
             Console.Write("\nChoose option: ");
@@ -234,10 +237,9 @@ namespace HRAndApplicantSystem.Services
                 "1" => "Submitted",
                 "2" => "Under Review",
                 "3" => "Shortlisted",
-                "4" => "For Interview",
-                "5" => "For Final Review",
-                "6" => "Accepted",
-                "7" => "Rejected",
+                "4" => "Interview Scheduled",
+                "5" => "Accepted",
+                "6" => "Rejected",
                 _ => null
             };
 

@@ -97,6 +97,7 @@ namespace HRAndApplicantSystem.Services
 
             string statusMessage = application.ApplicationStatus switch
             {
+                "Draft" => "This application is in Draft status.\nYou can manage documents and submit it whenever you're ready.",
                 "Submitted" => "Your application has been submitted and is pending initial review.\nWe'll notify you of any updates.",
                 "Under Review" => "Your application is currently being actively reviewed by our HR team.\nPlease check back soon for updates.",
                 "Shortlisted" => "Great! You've been shortlisted for the position.\nWe'll contact you soon about next steps.",
@@ -118,30 +119,103 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine($"{nextOption}. View Interview Details");
                 nextOption++;
             }
+            if (application.ApplicationStatus == "Draft")
+            {
+                Console.WriteLine($"{nextOption}. Resume Draft");
+                nextOption++;
+                Console.WriteLine($"{nextOption}. Delete Draft");
+                nextOption++;
+            }
             Console.WriteLine($"{nextOption}. Back");
 
             Console.Write("\nChoose an option: ");
 
             string actionChoice = Console.ReadLine()?.Trim() ?? string.Empty;
 
-            switch (actionChoice)
+            if (application.ApplicationStatus == "Draft")
             {
-                case "1":
-                    ViewApplicationSummary(application);
-                    break;
-                case "2":
-                    ManageApplicationDocuments(application);
-                    break;
-                case "3":
-                    if (application.ApplicationStatus == "Interview Scheduled")
-                    {
-                        ViewInterviewDetails(application);
-                    }
-                    break;
+                switch (actionChoice)
+                {
+                    case "1":
+                        ViewApplicationSummary(application);
+                        break;
+                    case "2":
+                        ManageApplicationDocuments(application);
+                        break;
+                    case "3":
+                        ResumeDraft(application);
+                        break;
+                    case "4":
+                        DeleteDraft(application);
+                        break;
+                }
+            }
+            else
+            {
+                switch (actionChoice)
+                {
+                    case "1":
+                        ViewApplicationSummary(application);
+                        break;
+                    case "2":
+                        ManageApplicationDocuments(application);
+                        break;
+                    case "3":
+                        if (application.ApplicationStatus == "Interview Scheduled")
+                        {
+                            ViewInterviewDetails(application);
+                        }
+                        break;
+                }
             }
 
             Console.WriteLine("\nPress any key to return...");
             Console.ReadKey();
+        }
+
+        private void ResumeDraft(Application application)
+        {
+            // Get the job details for the draft application
+            var jobVacancy = db.GetJobVacancyByID(application.JobID);
+            if (jobVacancy == null)
+            {
+                Console.WriteLine("\n✗ Error: Job position not found.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            // Get applicant details
+            var applicant = db.GetApplicantByID(application.ApplicantID);
+            if (applicant == null)
+            {
+                Console.WriteLine("\n✗ Error: Applicant information not found.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            // Resume the draft workflow
+            ApplicationDraftingService draftingService = new ApplicationDraftingService();
+            draftingService.ResumeDraftApplication(jobVacancy, applicant, application.ApplicationID);
+        }
+
+        private void DeleteDraft(Application application)
+        {
+            Console.WriteLine("\nAre you sure you want to delete this draft? (yes/no): ");
+            string confirm = (Console.ReadLine()?.Trim() ?? "no").ToLower();
+            
+            if (confirm == "yes" || confirm == "y")
+            {
+                if (db.DeleteApplication(application.ApplicationID))
+                {
+                    Console.WriteLine("✓ Draft deleted successfully.");
+                    System.Threading.Thread.Sleep(1500);
+                }
+                else
+                {
+                    Console.WriteLine("✗ Failed to delete draft.");
+                    System.Threading.Thread.Sleep(1500);
+                }
+            }
         }
 
         private void ViewApplicationSummary(Application application)
@@ -164,13 +238,47 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     INTERVIEW DETAILS                        ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
+            var interview = db.GetInterviewSchedule(application.ApplicationID);
+            
+            if (interview == null)
+            {
+                Console.WriteLine("No interview scheduled yet.");
+                Console.WriteLine("\nPress any key to continue...");
+                Console.ReadKey();
+                return;
+            }
+
             Console.WriteLine("Your interview has been scheduled!");
-            Console.WriteLine("\n[Interview Details from InterviewSchedules table]");
+            Console.WriteLine("\n" + new string('=', 45));
+            Console.WriteLine("\n📅 INTERVIEW SCHEDULE");
+            
+            // Combine date and time for display
+            if (interview.InterviewDate != null && interview.InterviewTime != null)
+            {
+                DateTime interviewDate = (DateTime)interview.InterviewDate;
+                DateTime interviewTime = (DateTime)interview.InterviewTime;
+                
+                // Combine date from InterviewDate and time from InterviewTime
+                DateTime combined = interviewDate.Date.Add(interviewTime.TimeOfDay);
+                Console.WriteLine($"Date & Time: {combined:MMMM dd, yyyy h:mm tt}");
+            }
+            else
+            {
+                Console.WriteLine("Date & Time: Not set");
+            }
+
+            Console.WriteLine($"Interviewer: {interview.Interviewer ?? "Not assigned"}");
+            Console.WriteLine($"Location: {interview.Location ?? "Not specified"}");
+            Console.WriteLine($"Status: {interview.Status}");
+
+            Console.WriteLine("\n" + new string('=', 45));
             Console.WriteLine("\nYou will receive an email confirmation with:");
             Console.WriteLine("  • Interview date and time");
             Console.WriteLine("  • Location or video call link");
             Console.WriteLine("  • Interviewer information");
             Console.WriteLine("  • Required documents to bring");
+            Console.WriteLine("\nPress any key to continue...");
+            Console.ReadKey();
         }
 
         public int GetSubmittedApplicationCount(int applicantId)
@@ -183,8 +291,8 @@ namespace HRAndApplicantSystem.Services
 
         private void ManageApplicationDocuments(Application application)
         {
-            // Check if application is still editable (Pending or Submitted status)
-            if (application.ApplicationStatus != "Pending" && application.ApplicationStatus != "Submitted")
+            // Check if application is editable (Draft or Submitted status only)
+            if (application.ApplicationStatus != "Draft" && application.ApplicationStatus != "Submitted")
             {
                 Console.Clear();
                 Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -193,6 +301,8 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("Your application is currently under review or has been decided.");
                 Console.WriteLine("You cannot edit your document submissions once HR has started reviewing your application.\n");
                 Console.WriteLine("Current Status: " + application.ApplicationStatus);
+                Console.WriteLine("\nPress any key to continue...");
+                Console.ReadKey();
                 return;
             }
 
