@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
@@ -9,7 +10,14 @@ namespace HRAndApplicantSystem.Services
     /// </summary>
     public class ApplicationDraftingService
     {
+        private readonly IApplicationRepository applicationRepository;
         private readonly DatabaseHelper db;
+
+        public ApplicationDraftingService(IApplicationRepository appRepo = null)
+        {
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
+            db = new DatabaseHelper();
+        }
 
         public class ApplicationDraft
         {
@@ -17,11 +25,6 @@ namespace HRAndApplicantSystem.Services
             public Applicant Applicant { get; set; }
             public List<dynamic> UploadedDocuments { get; set; } = new List<dynamic>();
             public DateTime DraftCreatedAt { get; set; } = DateTime.Now;
-        }
-
-        public ApplicationDraftingService()
-        {
-            db = new DatabaseHelper();
         }
 
         /// <summary>
@@ -80,7 +83,7 @@ namespace HRAndApplicantSystem.Services
                     foreach (var doc in documents)
                     {
                         string status = doc.DocumentStatus;
-                        string icon = status == "Submitted" ? "✓" : "○";
+                        string icon = status == ApplicationStatus.Submitted ? "✓" : "○";
                         Console.WriteLine($"  {icon} {doc.RequirementName}: {status}");
                     }
                     Console.WriteLine();
@@ -148,7 +151,7 @@ namespace HRAndApplicantSystem.Services
                 {
                     var doc = documents.FirstOrDefault(d => d.RequirementTypeID == req.RequirementTypeID);
                     string status = doc != null ? doc.DocumentStatus : "Not Submitted";
-                    string icon = status == "Submitted" ? "✓" : "✗";
+                    string icon = status == ApplicationStatus.Submitted ? "✓" : "✗";
                     Console.WriteLine($"  {icon} {req.RequirementName}: {status}");
                 }
             }
@@ -175,7 +178,7 @@ namespace HRAndApplicantSystem.Services
             if (confirm == "yes" || confirm == "y")
             {
                 // Update draft to Submitted status
-                if (db.UpdateApplicationStatus(applicationID, "Submitted", "Draft submitted by applicant", "Applicant"))
+                if (db.UpdateApplicationStatus(applicationID, ApplicationStatus.Submitted, "Draft submitted by applicant", "Applicant"))
                 {
                     // Log audit trail for applicant submission
                     db.LogAuditTrail("Applicant", draft.Applicant.Username, $"Submitted Application #{applicationID} for Position: {draft.Job.JobTitle}");
@@ -243,7 +246,7 @@ namespace HRAndApplicantSystem.Services
                     foreach (var doc in documents)
                     {
                         string status = doc.DocumentStatus;
-                        string icon = status == "Submitted" ? "✓" : "○";
+                        string icon = status == ApplicationStatus.Submitted ? "✓" : "○";
                         Console.WriteLine($"  {icon} {doc.RequirementName}: {status}");
                     }
                     Console.WriteLine();

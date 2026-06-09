@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 using System.Linq;
@@ -7,11 +8,13 @@ namespace HRAndApplicantSystem.Services
 {
     public class JobVacancyService
     {
-        private readonly DatabaseHelper db;
+        private readonly IJobVacancyRepository jobVacancyRepository;
+        private readonly IApplicationRepository applicationRepository;
 
-        public JobVacancyService()
+        public JobVacancyService(IJobVacancyRepository jobRepo = null, IApplicationRepository appRepo = null)
         {
-            db = new DatabaseHelper();
+            jobVacancyRepository = jobRepo ?? new JobVacancyRepository(new DatabaseHelper());
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
         }
 
         public void BrowseJobVacancies(Applicant applicant)
@@ -63,7 +66,7 @@ namespace HRAndApplicantSystem.Services
         private void ViewAllJobs(Applicant applicant)
         {
             // Only show Open jobs to applicants
-            var allJobs = db.GetAllJobVacancies();
+            var allJobs = jobVacancyRepository.GetAllJobVacancies();
             var openJobs = allJobs.Where(j => j.Status == "Open").ToList();
             DisplayJobs(openJobs, applicant);
         }
@@ -80,7 +83,7 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            var allJobs = db.GetAllJobVacancies();
+            var allJobs = jobVacancyRepository.GetAllJobVacancies();
             // Only search within Open jobs
             var filteredJobs = allJobs
                 .Where(j => j.Status == "Open" && j.JobTitle.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
@@ -120,7 +123,7 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            var allJobs = db.GetAllJobVacancies();
+            var allJobs = jobVacancyRepository.GetAllJobVacancies();
             var filteredJobs = allJobs
                 .Where(j => j.Status.Equals(status, StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -221,7 +224,7 @@ namespace HRAndApplicantSystem.Services
             }
 
             // Check if applicant has already applied for this job
-            if (db.HasApplicantAppliedForJob(applicantId, job.JobID))
+            if (applicationRepository.HasApplicantAppliedForJob(applicantId, job.JobID))
             {
                 Console.WriteLine($"\n✗ You have already applied for {job.JobTitle}.");
                 Console.WriteLine("You cannot apply for the same position twice.");
@@ -229,9 +232,9 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            // Use the new drafting service to let applicants prepare their application before submitting
-            ApplicationDraftingService draftingService = new ApplicationDraftingService();
-            draftingService.DraftAndSubmitApplication(job, applicant);
+            // Use the new workflow service to let applicants prepare their application before submitting
+            ApplicationWorkflowService workflowService = new ApplicationWorkflowService();
+            workflowService.DraftAndSubmitApplication(job, applicant);
         }
     }
 }

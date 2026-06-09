@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using System;
 using System.Collections.Generic;
 
@@ -6,10 +7,12 @@ namespace HRAndApplicantSystem.Services
 {
     public class AuditLogService
     {
+        private readonly IAuditRepository auditRepository;
         private readonly DatabaseHelper db;
 
-        public AuditLogService()
+        public AuditLogService(IAuditRepository auditRepo = null)
         {
+            auditRepository = auditRepo ?? new AuditRepository(new DatabaseHelper());
             db = new DatabaseHelper();
         }
 

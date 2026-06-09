@@ -1,11 +1,20 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
+using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Services
 {
     public class ApplicationStatusTransitionService
     {
-        private DatabaseHelper db = new DatabaseHelper();
+        private readonly IApplicationRepository applicationRepository;
+        private readonly DatabaseHelper db;
+
+        public ApplicationStatusTransitionService(IApplicationRepository appRepo = null)
+        {
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
+            db = new DatabaseHelper(); // Temporary for non-repository operations
+        }
 
         public void ShowStatusTransitionMenu(string hrUsername)
         {
@@ -55,10 +64,10 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     SHORTLIST APPLICANT                      ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var pendingApps = db.GetApplicationsByStatus("Submitted");
+            var pendingApps = db.GetApplicationsByStatus(ApplicationStatus.Submitted);
             if (pendingApps.Count == 0)
             {
-                pendingApps = db.GetApplicationsByStatus("Under Review");
+                pendingApps = db.GetApplicationsByStatus(ApplicationStatus.UnderReview);
             }
 
             if (pendingApps.Count == 0)
@@ -96,7 +105,7 @@ namespace HRAndApplicantSystem.Services
 
             string remarks = InputValidator.GetValidatedInput("Enter remarks (optional): ", "Remarks", true);
 
-            bool success = db.UpdateApplicationStatus(selected.ApplicationID, "Shortlisted", remarks, hrUsername);
+            bool success = db.UpdateApplicationStatus(selected.ApplicationID, ApplicationStatus.Shortlisted, remarks, hrUsername);
 
             if (success)
             {
@@ -180,7 +189,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
             var pendingApps = db.GetAllApplications()
-                .Where(app => app.Status != "Accepted" && app.Status != "Rejected")
+                .Where(app => app.Status != ApplicationStatus.Accepted && app.Status != ApplicationStatus.Rejected)
                 .ToList();
 
             if (pendingApps.Count == 0)
@@ -218,7 +227,7 @@ namespace HRAndApplicantSystem.Services
 
             string reason = InputValidator.GetValidatedInput("Enter rejection reason: ", "Reason");
 
-            bool success = db.UpdateApplicationStatus(selected.ApplicationID, "Rejected", reason, hrUsername);
+            bool success = db.UpdateApplicationStatus(selected.ApplicationID, ApplicationStatus.Rejected, reason, hrUsername);
 
             if (success)
             {

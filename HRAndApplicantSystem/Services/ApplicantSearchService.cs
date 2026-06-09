@@ -1,13 +1,16 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 
 namespace HRAndApplicantSystem.Services
 {
     public class ApplicantSearchService
     {
+        private readonly IApplicantRepository applicantRepository;
         private readonly DatabaseHelper db;
 
-        public ApplicantSearchService()
+        public ApplicantSearchService(IApplicantRepository appRepo = null)
         {
+            applicantRepository = appRepo ?? new ApplicantRepository(new DatabaseHelper());
             db = new DatabaseHelper();
         }
 

@@ -8,7 +8,7 @@ namespace HRAndApplicantSystem.Services
         private readonly DashboardSummaryService dashboardSummaryService;
         private readonly ApplicantProfileService profileService;
         private readonly JobVacancyService jobVacancyService;
-        private readonly ApplicationManagementService applicationManagementService;
+        private readonly ApplicationWorkflowService applicationWorkflowService;
         private readonly AccountSettingsService accountSettingsService;
         private readonly ApplicantApplicationHistoryService applicationHistoryService;
 
@@ -17,7 +17,7 @@ namespace HRAndApplicantSystem.Services
             dashboardSummaryService = new DashboardSummaryService();
             profileService = new ApplicantProfileService();
             jobVacancyService = new JobVacancyService();
-            applicationManagementService = new ApplicationManagementService();
+            applicationWorkflowService = new ApplicationWorkflowService();
             accountSettingsService = new AccountSettingsService();
             applicationHistoryService = new ApplicantApplicationHistoryService();
         }
@@ -62,7 +62,7 @@ namespace HRAndApplicantSystem.Services
                         jobVacancyService.BrowseJobVacancies(applicant);
                         break;
                     case "4":
-                        applicationManagementService.ManageApplications(applicant);
+                        applicationWorkflowService.ManageApplications(applicant);
                         break;
                     case "5":
                         applicationHistoryService.ShowMyApplications(username);

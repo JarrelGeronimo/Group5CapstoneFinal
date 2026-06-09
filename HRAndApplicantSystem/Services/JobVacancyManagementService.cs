@@ -32,11 +32,9 @@ namespace HRAndApplicantSystem.Services
                 Console.WriteLine("2. Create New Job Vacancy");
                 Console.WriteLine("3. Edit Job Vacancy");
                 Console.WriteLine("4. View Job Requirements");
-                Console.WriteLine("5. Clone Job Vacancy");          
-                Console.WriteLine("6. Archive / Close Job Vacancy"); 
-                Console.WriteLine("7. View Applicant Counts");       
-                Console.WriteLine("8. Delete Job Vacancy");
-                Console.WriteLine("9. Back to Dashboard\n");
+                Console.WriteLine("5. View Applicant Counts");
+                Console.WriteLine("6. Delete Job Vacancy");
+                Console.WriteLine("7. Back to Dashboard\n");
 
                 Console.Write("Choose an option: ");
                 string choice = Console.ReadLine()?.Trim() ?? string.Empty;
@@ -55,19 +53,13 @@ namespace HRAndApplicantSystem.Services
                     case "4":
                         EditJobRequirements();
                         break;
-                    case "5":
-                        CloneJobVacancy();
-                        break;
-                    case"6":
-                        ArchiveJobVacancy();
-                        break;
-                    case "7": 
+                    case "5": 
                         ViewApplicantCounts();    
                         break;  
-                    case "8": 
+                    case "6": 
                         DeleteJobVacancy();       
                         break;
-                    case "9": 
+                    case "7": 
                         managing = false;         
                         break;
                     default:
@@ -505,141 +497,8 @@ namespace HRAndApplicantSystem.Services
         /// Helper method to get multiline input from user
         /// </summary>
         
-        private void CloneJobVacancy()
-        {
-            Console.Clear();
-            Console.WriteLine("╔════════════════════════════════════════════════╗");
-            Console.WriteLine("║   CLONE JOB VACANCY                            ║");
-            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
-
-            var vacancies = db.GetAllJobVacancies();
-
-            if (vacancies.Count == 0)
-            {
-                Console.WriteLine("No job vacancies available to clone.\n");
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-                return;
-            }
-
-            Console.WriteLine("Select a job to clone:\n");
-            for (int i = 0; i < vacancies.Count; i++)
-                Console.WriteLine($"{i + 1}. {vacancies[i].JobTitle} (ID: {vacancies[i].JobID}) - {vacancies[i].Status}");
-
-            Console.WriteLine($"\n{vacancies.Count + 1}. Back\n");
-            Console.Write("Your choice: ");
-
-            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice) || choice < 1 || choice > vacancies.Count + 1)
-            { Console.WriteLine("Invalid selection."); System.Threading.Thread.Sleep(2000); return; }
-
-            if (choice == vacancies.Count + 1) return;
-
-            var source    = vacancies[choice - 1];
-            string rawTitle = $"Copy of {source.JobTitle}";
-            // Truncate to 100 chars (DB limit)
-            string clonedTitle = rawTitle.Length > 100 ? rawTitle.Substring(0, 100) : rawTitle;
-
-            // Allow HR to customise the cloned title before saving
-            Console.WriteLine($"\nDefault title for clone: {clonedTitle}");
-            Console.Write("Press Enter to keep this title, or type a new one: ");
-            string inputTitle = Console.ReadLine()?.Trim() ?? string.Empty;
-
-            if (!string.IsNullOrEmpty(inputTitle))
-                clonedTitle = inputTitle.Length > 100 ? inputTitle.Substring(0, 100) : inputTitle;
-
-            var cloned = new JobVacancy
-            {
-                JobTitle  = clonedTitle,
-                JobDetail = source.JobDetail,
-                Status    = "Open"          // always start fresh
-            };
-
-            if (db.CreateJobVacancy(cloned))
-            {
-                Console.WriteLine($"\n✓ Job vacancy cloned successfully!");
-                Console.WriteLine($"  New Title : {clonedTitle}");
-                Console.WriteLine($"  Status    : Open");
-                Console.WriteLine("\n  Tip: Use 'Edit Job Vacancy' to fine-tune the cloned posting.");
-            }
-            else
-            {
-                Console.WriteLine("\n✗ Failed to clone job vacancy. Please try again.");
-            }
-
-            Console.WriteLine("\nPress any key to continue...");
-            Console.ReadKey();
-        }
-
-        /// <summary>
-        /// Archives a job by setting its Status to "Archived".
-        /// Archived jobs are closed to new applications but their data is preserved.
-        /// </summary>
-        private void ArchiveJobVacancy()
-        {
-            Console.Clear();
-            Console.WriteLine("╔════════════════════════════════════════════════╗");
-            Console.WriteLine("║   ARCHIVE JOB VACANCY                          ║");
-            Console.WriteLine("╚════════════════════════════════════════════════╝\n");
-
-            var vacancies = db.GetAllJobVacancies();
-
-            // Show only non-archived jobs — nothing to do if all are archived
-            var archivable = vacancies.FindAll(j => j.Status != "Archived");
-
-            if (archivable.Count == 0)
-            {
-                Console.WriteLine("No active job vacancies to archive.\n");
-                Console.WriteLine("Press any key to continue...");
-                Console.ReadKey();
-                return;
-            }
-
-            Console.WriteLine($"{"#",-4} {"Job Title",-30} {"Current Status",-15}");
-            Console.WriteLine(new string('-', 52));
-
-            for (int i = 0; i < archivable.Count; i++)
-                Console.WriteLine($"{i + 1,-4} {archivable[i].JobTitle,-30} {archivable[i].Status,-15}");
-
-            Console.WriteLine($"\n{archivable.Count + 1}. Back\n");
-            Console.Write("Select a job to archive: ");
-
-            if (!int.TryParse(Console.ReadLine()?.Trim(), out int choice) || choice < 1 || choice > archivable.Count + 1)
-            { Console.WriteLine("Invalid selection."); System.Threading.Thread.Sleep(2000); return; }
-
-            if (choice == archivable.Count + 1) return;
-
-            var selectedJob = archivable[choice - 1];
-
-            Console.WriteLine($"\nYou are about to archive '{selectedJob.JobTitle}'.");
-            Console.WriteLine("Archived jobs will no longer accept new applications.");
-            Console.Write("Confirm? (yes/no): ");
-            string confirm = Console.ReadLine()?.Trim().ToLower() ?? string.Empty;
-
-            if (confirm != "yes" && confirm != "y")
-            {
-                Console.WriteLine("Archive cancelled.");
-                System.Threading.Thread.Sleep(1500);
-                return;
-            }
-
-            selectedJob.Status = "Archived";
-
-            if (db.UpdateJobVacancy(selectedJob))
-            {
-                Console.WriteLine($"\n✓ '{selectedJob.JobTitle}' has been archived successfully.");
-                Console.WriteLine("  The job posting is now closed to new applications.");
-            }
-            else
-            {
-                Console.WriteLine("\n✗ Failed to archive job vacancy. Please try again.");
-            }
-
-            Console.WriteLine("\nPress any key to continue...");
-            Console.ReadKey();
-        }
-
         // ════════════════════════════════════════════════════════════════
-        //  NEW FEATURE 5c — VIEW APPLICANT COUNTS PER JOB
+        //  FEATURE — VIEW APPLICANT COUNTS PER JOB
         // ════════════════════════════════════════════════════════════════
 
         /// <summary>
@@ -683,17 +542,17 @@ namespace HRAndApplicantSystem.Services
                 foreach (var app in applications)
                 {
                     string s = (string)app.Status;
-                    if (s == "Draft") continue;     // skip drafts
+                    if (s == ApplicationStatus.Draft) continue;     // skip drafts
 
                     total++;
                     switch (s)
                     {
-                        case "Submitted":           submitted++;  break;
-                        case "Under Review":        underReview++;break;
-                        case "Shortlisted":         shortlisted++;break;
-                        case "Interview Scheduled": interview++;  break;
-                        case "Accepted":            accepted++;   break;
-                        case "Rejected":            rejected++;   break;
+                        case ApplicationStatus.Submitted:           submitted++;  break;
+                        case ApplicationStatus.UnderReview:        underReview++;break;
+                        case ApplicationStatus.Shortlisted:         shortlisted++;break;
+                        case ApplicationStatus.InterviewScheduled: interview++;  break;
+                        case ApplicationStatus.Accepted:            accepted++;   break;
+                        case ApplicationStatus.Rejected:            rejected++;   break;
                     }
                 }
 

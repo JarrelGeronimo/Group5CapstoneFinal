@@ -1,38 +1,35 @@
-using HRAndApplicantSystem.Database;
-using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
+using HRAndApplicantSystem.Services.Business;
 
-namespace HRAndApplicantSystem.Services
+namespace HRAndApplicantSystem.Services.UI
 {
-    public class ApplicationManagementService
+    /// <summary>
+    /// UI rendering for application management.
+    /// Handles all console output and user interaction.
+    /// Uses ApplicationManagementBusinessService for business logic.
+    /// </summary>
+    public class ApplicationManagementUIService
     {
-        private readonly IApplicationRepository applicationRepository;
-        private readonly DatabaseHelper db;
+        private readonly ApplicationManagementBusinessService businessService;
 
-        public ApplicationManagementService(IApplicationRepository appRepo = null)
+        public ApplicationManagementUIService(ApplicationManagementBusinessService businessService = null)
         {
-            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
-            db = new DatabaseHelper();
+            this.businessService = businessService ?? new ApplicationManagementBusinessService();
         }
 
+        /// <summary>
+        /// Show main applications list interface
+        /// </summary>
         public void ManageApplications(Applicant applicant)
         {
             bool managing = true;
             while (managing)
             {
-                Console.Clear();
-                Console.WriteLine("╔══════════════════════════════════════════════╗");
-                Console.WriteLine("║     MY APPLICATIONS                          ║");
-                Console.WriteLine("╚══════════════════════════════════════════════╝\n");
-
-                var applications = db.GetApplicantApplications(applicant.ApplicantID);
+                var applications = businessService.GetApplicantApplications(applicant.ApplicantID);
 
                 if (applications.Count == 0)
                 {
-                    Console.WriteLine("You haven't applied for any jobs yet.");
-                    Console.WriteLine("\nStart by browsing job vacancies to find positions that interest you.");
-                    Console.WriteLine("\nPress any key to return...");
-                    Console.ReadKey();
+                    ShowNoApplicationsMessage();
                     managing = false;
                     continue;
                 }
@@ -40,6 +37,18 @@ namespace HRAndApplicantSystem.Services
                 DisplayApplicationList(applications, applicant);
                 managing = false;
             }
+        }
+
+        private void ShowNoApplicationsMessage()
+        {
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     MY APPLICATIONS                          ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+            Console.WriteLine("You haven't applied for any jobs yet.");
+            Console.WriteLine("\nStart by browsing job vacancies to find positions that interest you.");
+            Console.WriteLine("\nPress any key to return...");
+            Console.ReadKey();
         }
 
         private void DisplayApplicationList(List<dynamic> applications, Applicant applicant)
@@ -56,9 +65,13 @@ namespace HRAndApplicantSystem.Services
             var appList = applications.ToList();
             foreach (var app in appList)
             {
-                string status = ((string)app.ApplicationStatus).Length > 14 ? ((string)app.ApplicationStatus).Substring(0, 14) : (string)app.ApplicationStatus;
+                string status = ((string)app.ApplicationStatus).Length > 14 
+                    ? ((string)app.ApplicationStatus).Substring(0, 14) 
+                    : (string)app.ApplicationStatus;
                 string date = ((DateTime)app.DateApplied).ToString("yyyy-MM-dd");
-                string jobTitle = ((string)app.JobTitle).Length > 24 ? ((string)app.JobTitle).Substring(0, 24) : (string)app.JobTitle;
+                string jobTitle = ((string)app.JobTitle).Length > 24 
+                    ? ((string)app.JobTitle).Substring(0, 24) 
+                    : (string)app.JobTitle;
                 Console.WriteLine($"{counter,-3} {jobTitle,-25} {status,-15} {date,-10}");
                 counter++;
             }
@@ -70,7 +83,6 @@ namespace HRAndApplicantSystem.Services
             {
                 var selectedApp = appList[choice - 1];
                 
-                // Create application object with additional details
                 var application = new Application
                 {
                     ApplicationID = (int)selectedApp.ApplicationID,
@@ -97,32 +109,24 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine($"Date Applied:    {application.DateApplied:MMMM dd, yyyy HH:mm}");
 
             Console.WriteLine("\n=== Application Status Summary ===\n");
+            Console.WriteLine(businessService.GetStatusMessage(application.ApplicationStatus));
 
-            string statusMessage = application.ApplicationStatus switch
-            {
-                ApplicationStatus.Draft => "This application is in Draft status.\nYou can manage documents and submit it whenever you're ready.",
-                ApplicationStatus.Submitted => "Your application has been submitted and is pending initial review.\nWe'll notify you of any updates.",
-                ApplicationStatus.UnderReview => "Your application is currently being actively reviewed by our HR team.\nPlease check back soon for updates.",
-                ApplicationStatus.Shortlisted => "Great! You've been shortlisted for the position.\nWe'll contact you soon about next steps.",
-                ApplicationStatus.InterviewScheduled => "Excellent! An interview has been scheduled for you.\nCheck your email for the date, time, and location.",
-                ApplicationStatus.Accepted => "Congratulations! Your application has been accepted.\nPlease check your email for next steps.",
-                ApplicationStatus.Rejected => "Unfortunately, we won't be moving forward with your application at this time.\nWe appreciate your interest and encourage you to apply for other positions.",
-                _ => "Your application status: " + application.ApplicationStatus
-            };
+            DisplayActionMenu(application, applicant);
+        }
 
-            Console.WriteLine(statusMessage);
-
+        private void DisplayActionMenu(Application application, Applicant applicant)
+        {
             Console.WriteLine("\n=== Actions ===\n");
             Console.WriteLine("1. View Application Summary");
             Console.WriteLine("2. Manage Documents");
             
             int nextOption = 3;
-            if (application.ApplicationStatus == ApplicationStatus.InterviewScheduled)
+            if (businessService.IsInterviewScheduled(application.ApplicationStatus))
             {
                 Console.WriteLine($"{nextOption}. View Interview Details");
                 nextOption++;
             }
-            if (application.ApplicationStatus == ApplicationStatus.Draft)
+            if (businessService.IsDraft(application.ApplicationStatus))
             {
                 Console.WriteLine($"{nextOption}. Resume Draft");
                 nextOption++;
@@ -134,13 +138,20 @@ namespace HRAndApplicantSystem.Services
             Console.Write("\nChoose an option: ");
 
             string actionChoice = Console.ReadLine()?.Trim() ?? string.Empty;
+            HandleApplicationAction(actionChoice, application, applicant);
 
-            if (application.ApplicationStatus == ApplicationStatus.Draft)
+            Console.WriteLine("\nPress any key to return...");
+            Console.ReadKey();
+        }
+
+        private void HandleApplicationAction(string choice, Application application, Applicant applicant)
+        {
+            if (businessService.IsDraft(application.ApplicationStatus))
             {
-                switch (actionChoice)
+                switch (choice)
                 {
                     case "1":
-                        ViewApplicationSummary(application);
+                        ShowApplicationSummary(application);
                         break;
                     case "2":
                         ManageApplicationDocuments(application);
@@ -155,98 +166,46 @@ namespace HRAndApplicantSystem.Services
             }
             else
             {
-                switch (actionChoice)
+                switch (choice)
                 {
                     case "1":
-                        ViewApplicationSummary(application);
+                        ShowApplicationSummary(application);
                         break;
                     case "2":
                         ManageApplicationDocuments(application);
                         break;
                     case "3":
-                        if (application.ApplicationStatus == ApplicationStatus.InterviewScheduled)
-                        {
-                            ViewInterviewDetails(application);
-                        }
+                        if (businessService.IsInterviewScheduled(application.ApplicationStatus))
+                            ShowInterviewDetails(application);
                         break;
                 }
             }
-
-            Console.WriteLine("\nPress any key to return...");
-            Console.ReadKey();
         }
 
-        private void ResumeDraft(Application application)
-        {
-            // Get the job details for the draft application
-            var jobVacancy = db.GetJobVacancyByID(application.JobID);
-            if (jobVacancy == null)
-            {
-                Console.WriteLine("\n✗ Error: Job position not found.");
-                System.Threading.Thread.Sleep(1500);
-                return;
-            }
-
-            // Get applicant details
-            var applicant = db.GetApplicantByID(application.ApplicantID);
-            if (applicant == null)
-            {
-                Console.WriteLine("\n✗ Error: Applicant information not found.");
-                System.Threading.Thread.Sleep(1500);
-                return;
-            }
-
-            // Resume the draft workflow
-            ApplicationWorkflowService workflowService = new ApplicationWorkflowService();
-            workflowService.ResumeDraftApplication(jobVacancy, applicant, application.ApplicationID);
-        }
-
-        private void DeleteDraft(Application application)
-        {
-            Console.WriteLine("\nAre you sure you want to delete this draft? (yes/no): ");
-            string confirm = (Console.ReadLine()?.Trim() ?? "no").ToLower();
-            
-            if (confirm == "yes" || confirm == "y")
-            {
-                if (db.DeleteApplication(application.ApplicationID))
-                {
-                    Console.WriteLine("✓ Draft deleted successfully.");
-                    System.Threading.Thread.Sleep(1500);
-                }
-                else
-                {
-                    Console.WriteLine("✗ Failed to delete draft.");
-                    System.Threading.Thread.Sleep(1500);
-                }
-            }
-        }
-
-        private void ViewApplicationSummary(Application application)
+        private void ShowApplicationSummary(Application application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
             Console.WriteLine("║     APPLICATION SUMMARY                      ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
-
             Console.WriteLine($"Status: {application.ApplicationStatus}");
             Console.WriteLine($"Applied: {application.DateApplied:MMMM dd, yyyy HH:mm}");
-
             Console.WriteLine("\n" + new string('=', 45));
         }
 
-        private void ViewInterviewDetails(Application application)
+        private void ShowInterviewDetails(Application application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
             Console.WriteLine("║     INTERVIEW DETAILS                        ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var interview = db.GetInterviewSchedule(application.ApplicationID);
+            var interview = businessService.GetInterviewSchedule(application.ApplicationID);
             
             if (interview == null)
             {
-                Console.WriteLine("No interview scheduled yet.");
-                Console.WriteLine("\nPress any key to continue...");
+                Console.WriteLine("No interview scheduled yet.\n");
+                Console.WriteLine("Press any key to continue...");
                 Console.ReadKey();
                 return;
             }
@@ -255,13 +214,10 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("\n" + new string('=', 45));
             Console.WriteLine("\n📅 INTERVIEW SCHEDULE");
             
-            // Combine date and time for display
             if (interview.InterviewDate != null && interview.InterviewTime != null)
             {
                 DateTime interviewDate = (DateTime)interview.InterviewDate;
                 DateTime interviewTime = (DateTime)interview.InterviewTime;
-                
-                // Combine date from InterviewDate and time from InterviewTime
                 DateTime combined = interviewDate.Date.Add(interviewTime.TimeOfDay);
                 Console.WriteLine($"Date & Time: {combined:MMMM dd, yyyy h:mm tt}");
             }
@@ -284,18 +240,51 @@ namespace HRAndApplicantSystem.Services
             Console.ReadKey();
         }
 
-        public int GetSubmittedApplicationCount(int applicantId)
+        private void ResumeDraft(Application application)
         {
-            var applications = db.GetApplicantApplications(applicantId);
-            return applications.Count(a => 
-                a.ApplicationStatus == ApplicationStatus.Submitted || 
-                a.ApplicationStatus == ApplicationStatus.UnderReview);
+            var jobVacancy = businessService.GetJobVacancy(application.JobID);
+            if (jobVacancy == null)
+            {
+                Console.WriteLine("\n✗ Error: Job position not found.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            var applicant = businessService.GetApplicant(application.ApplicantID);
+            if (applicant == null)
+            {
+                Console.WriteLine("\n✗ Error: Applicant information not found.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            var workflowService = new ApplicationWorkflowService();
+            workflowService.ResumeDraftApplication(jobVacancy, applicant, application.ApplicationID);
+        }
+
+        private void DeleteDraft(Application application)
+        {
+            Console.WriteLine("\nAre you sure you want to delete this draft? (yes/no): ");
+            string confirm = (Console.ReadLine()?.Trim() ?? "no").ToLower();
+            
+            if (confirm == "yes" || confirm == "y")
+            {
+                if (businessService.DeleteApplication(application.ApplicationID))
+                {
+                    Console.WriteLine("✓ Draft deleted successfully.");
+                    System.Threading.Thread.Sleep(1500);
+                }
+                else
+                {
+                    Console.WriteLine("✗ Failed to delete draft.");
+                    System.Threading.Thread.Sleep(1500);
+                }
+            }
         }
 
         private void ManageApplicationDocuments(Application application)
         {
-            // Check if application is editable (Draft or Submitted status only)
-            if (application.ApplicationStatus != ApplicationStatus.Draft && application.ApplicationStatus != ApplicationStatus.Submitted)
+            if (!businessService.IsEditable(application.ApplicationStatus))
             {
                 Console.Clear();
                 Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -309,7 +298,7 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            DocumentSubmissionService docService = new DocumentSubmissionService();
+            var docService = new DocumentSubmissionService();
             docService.ManageDocumentSubmissions(application.ApplicantID, application.JobID);
         }
     }

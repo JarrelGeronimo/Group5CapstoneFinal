@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
@@ -6,6 +7,7 @@ namespace HRAndApplicantSystem.Services
     public class HRDashboardService
     {
         private readonly DatabaseHelper db;
+        private readonly IApplicationRepository applicationRepository;
         private readonly ScreeningService screeningService;
         private readonly InterviewService interviewService;
         private readonly HiringDecisionService hiringDecisionService;
@@ -17,9 +19,10 @@ namespace HRAndApplicantSystem.Services
         private readonly ApplicantSearchService applicantSearchService;
         private readonly RequirementManagementService requirementManagementService;
 
-        public HRDashboardService()
+        public HRDashboardService(IApplicationRepository appRepo = null)
         {
             db = new DatabaseHelper();
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
             screeningService = new ScreeningService();
             interviewService = new InterviewService();
             hiringDecisionService = new HiringDecisionService();
@@ -173,12 +176,12 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     ALL APPLICATIONS                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var submitted       = db.GetApplicationsByStatus("Submitted");
-            var underReview     = db.GetApplicationsByStatus("Under Review");
-            var shortlisted     = db.GetApplicationsByStatus("Shortlisted");
-            var interviewScheduled = db.GetApplicationsByStatus("Interview Scheduled");
-            var accepted        = db.GetApplicationsByStatus("Accepted");
-            var rejected        = db.GetApplicationsByStatus("Rejected");
+            var submitted       = db.GetApplicationsByStatus(ApplicationStatus.Submitted);
+            var underReview     = db.GetApplicationsByStatus(ApplicationStatus.UnderReview);
+            var shortlisted     = db.GetApplicationsByStatus(ApplicationStatus.Shortlisted);
+            var interviewScheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
+            var accepted        = db.GetApplicationsByStatus(ApplicationStatus.Accepted);
+            var rejected        = db.GetApplicationsByStatus(ApplicationStatus.Rejected);
 
             Console.WriteLine($"Submitted            : {submitted.Count}");
             Console.WriteLine($"Under Review         : {underReview.Count}");
@@ -187,12 +190,12 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine($"Accepted             : {accepted.Count}");
             Console.WriteLine($"Rejected             : {rejected.Count}\n");
 
-            DisplayApplicationsList(submitted,       "Submitted");
-            DisplayApplicationsList(underReview,     "Under Review");
-            DisplayApplicationsList(shortlisted,     "Shortlisted");
-            DisplayApplicationsList(interviewScheduled, "Interview Scheduled");
-            DisplayApplicationsList(accepted,        "Accepted");
-            DisplayApplicationsList(rejected,        "Rejected");
+            DisplayApplicationsList(submitted,       ApplicationStatus.Submitted);
+            DisplayApplicationsList(underReview,     ApplicationStatus.UnderReview);
+            DisplayApplicationsList(shortlisted,     ApplicationStatus.Shortlisted);
+            DisplayApplicationsList(interviewScheduled, ApplicationStatus.InterviewScheduled);
+            DisplayApplicationsList(accepted,        ApplicationStatus.Accepted);
+            DisplayApplicationsList(rejected,        ApplicationStatus.Rejected);
 
             Console.WriteLine("\nPress any key to return...");
             Console.ReadKey();
@@ -259,12 +262,12 @@ namespace HRAndApplicantSystem.Services
             string statusMap = Console.ReadLine()?.Trim() ?? string.Empty;
             string status = statusMap switch
             {
-                "1" => "Submitted",
-                "2" => "Under Review",
-                "3" => "Shortlisted",
-                "4" => "Interview Scheduled",
-                "5" => "Accepted",
-                "6" => "Rejected",
+                "1" => ApplicationStatus.Submitted,
+                "2" => ApplicationStatus.UnderReview,
+                "3" => ApplicationStatus.Shortlisted,
+                "4" => ApplicationStatus.InterviewScheduled,
+                "5" => ApplicationStatus.Accepted,
+                "6" => ApplicationStatus.Rejected,
                 _ => null
             };
 

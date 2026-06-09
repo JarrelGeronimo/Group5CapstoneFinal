@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 
@@ -10,10 +11,12 @@ namespace HRAndApplicantSystem.Services
     /// </summary>
     public class RequirementManagementService
     {
+        private readonly IDocumentRepository documentRepository;
         private readonly DatabaseHelper db;
 
-        public RequirementManagementService()
+        public RequirementManagementService(IDocumentRepository docRepo = null)
         {
+            documentRepository = docRepo ?? new DocumentRepository(new DatabaseHelper());
             db = new DatabaseHelper();
         }
 

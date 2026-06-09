@@ -5,6 +5,10 @@
         "/^powershell -Command \"Get-Content 'c:\\\\C# Projects\\\\source\\\\repos\\\\HRAndApplicantSystem\\\\HRAndApplicantSystem\\\\Services\\\\JobVacancyManagementService\\.cs' \\| Select-Object -Last 10\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^cd \"c:\\\\C# Projects\\\\source\\\\repos\\\\HRAndApplicantSystem\\\\HRAndApplicantSystem\" ; powershell -Command \"Select-String 'public\\.\\*\\\\\\(' Database/DatabaseHelper\\.cs \\| % \\{\\$_\\.Line\\.Trim\\(\\)\\} \\| Select-Object -First 50\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }

@@ -1,16 +1,19 @@
 using System;
 using System.Collections.Generic;
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
 {
     public class ApplicantApplicationHistoryService
     {
+        private readonly IApplicationRepository applicationRepository;
         private readonly DatabaseHelper db;
 
-        public ApplicantApplicationHistoryService()
+        public ApplicantApplicationHistoryService(IApplicationRepository appRepo = null)
         {
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
             db = new DatabaseHelper();
         }
 
@@ -149,13 +152,13 @@ namespace HRAndApplicantSystem.Services
 
         private static ConsoleColor StatusColor(string status) => status switch
         {
-            "Submitted"          => ConsoleColor.Cyan,
-            "Under Review"       => ConsoleColor.Yellow,
-            "Shortlisted"        => ConsoleColor.Blue,
-            "Interview Scheduled"=> ConsoleColor.Magenta,
-            "Accepted"           => ConsoleColor.Green,
-            "Rejected"           => ConsoleColor.Red,
-            _                    => ConsoleColor.White
+            ApplicationStatus.Submitted          => ConsoleColor.Cyan,
+            ApplicationStatus.UnderReview        => ConsoleColor.Yellow,
+            ApplicationStatus.Shortlisted        => ConsoleColor.Blue,
+            ApplicationStatus.InterviewScheduled => ConsoleColor.Magenta,
+            ApplicationStatus.Accepted           => ConsoleColor.Green,
+            ApplicationStatus.Rejected           => ConsoleColor.Red,
+            _                                    => ConsoleColor.White
         };
     }
 }

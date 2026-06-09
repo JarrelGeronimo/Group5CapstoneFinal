@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 
@@ -6,11 +7,11 @@ namespace HRAndApplicantSystem.Services
 {
     public class ApplicantProfileService
     {
-        private readonly DatabaseHelper db;
+        private readonly IApplicantRepository applicantRepository;
 
-        public ApplicantProfileService()
+        public ApplicantProfileService(IApplicantRepository appRepo = null)
         {
-            db = new DatabaseHelper();
+            applicantRepository = appRepo ?? new ApplicantRepository(new DatabaseHelper());
         }
 
         public void ShowProfileMenu(Applicant applicant, string username)
@@ -38,7 +39,7 @@ namespace HRAndApplicantSystem.Services
                     case "2":
                         EditProfile(applicant, username);
                         // Refresh applicant data after editing
-                        var updatedApplicant = db.GetApplicantByUsername(username);
+                        var updatedApplicant = applicantRepository.GetApplicantByUsername(username);
                         if (updatedApplicant != null)
                         {
                             applicant.FirstName = updatedApplicant.FirstName;
@@ -93,7 +94,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
             // Get current values to show as defaults
-            var currentApplicant = db.GetApplicantByUsername(username);
+            var currentApplicant = applicantRepository.GetApplicantByUsername(username);
             if (currentApplicant == null)
             {
                 Console.WriteLine("Error: Could not retrieve current profile.");
@@ -130,7 +131,7 @@ namespace HRAndApplicantSystem.Services
             };
 
             // Save changes
-            if (db.SaveApplicantInfo(username, updatedApplicant))
+            if (applicantRepository.SaveApplicantInfo(username, updatedApplicant))
             {
                 Console.WriteLine("\n✓ Profile updated successfully!");
                 System.Threading.Thread.Sleep(2000);

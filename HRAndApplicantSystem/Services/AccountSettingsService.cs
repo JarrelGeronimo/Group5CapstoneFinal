@@ -1,11 +1,19 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Services
 {
     public class AccountSettingsService
     {
-        private DatabaseHelper db = new DatabaseHelper();
+        private readonly IUserRepository userRepository;
+        private readonly DatabaseHelper db;
+
+        public AccountSettingsService(IUserRepository userRepo = null)
+        {
+            userRepository = userRepo ?? new UserRepository(new DatabaseHelper());
+            db = new DatabaseHelper();
+        }
 
         public void ShowAccountSettings(string username)
         {

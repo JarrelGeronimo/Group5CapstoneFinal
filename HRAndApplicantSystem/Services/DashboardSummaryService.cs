@@ -1,15 +1,16 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
 {
     public class DashboardSummaryService
     {
-        private readonly DatabaseHelper db;
+        private readonly IApplicationRepository applicationRepository;
 
-        public DashboardSummaryService()
+        public DashboardSummaryService(IApplicationRepository appRepo = null)
         {
-            db = new DatabaseHelper();
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
         }
 
         public void ShowDashboard(Applicant applicant, string username)
@@ -20,7 +21,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
             // Get applicant's applications
-            var applications = db.GetApplicantApplications(applicant.ApplicantID);
+            var applications = applicationRepository.GetApplicantApplications(applicant.ApplicantID);
 
             if (applications.Count == 0)
             {
@@ -64,9 +65,9 @@ namespace HRAndApplicantSystem.Services
 
             // Show upcoming actions/missing documents placeholder
             Console.WriteLine("\n=== Next Steps ===\n");
-            bool hasPendingReview = applications.Any(a => a.ApplicationStatus == "Submitted" || a.ApplicationStatus == "Under Review");
-            bool hasAccepted = applications.Any(a => a.ApplicationStatus == "Accepted");
-            bool hasInterviewScheduled = applications.Any(a => a.ApplicationStatus == "Interview Scheduled");
+            bool hasPendingReview = applications.Any(a => a.ApplicationStatus == ApplicationStatus.Submitted || a.ApplicationStatus == ApplicationStatus.UnderReview);
+            bool hasAccepted = applications.Any(a => a.ApplicationStatus == ApplicationStatus.Accepted);
+            bool hasInterviewScheduled = applications.Any(a => a.ApplicationStatus == ApplicationStatus.InterviewScheduled);
             bool hasDrafts = false; // No draft status in schema
 
             // Draft applications not applicable - applications go directly to Submitted status
@@ -101,13 +102,13 @@ namespace HRAndApplicantSystem.Services
 
         public int GetApplicationCount(int applicantId)
         {
-            var applications = db.GetApplicantApplications(applicantId);
+            var applications = applicationRepository.GetApplicantApplications(applicantId);
             return applications.Count;
         }
 
         public int GetPendingApplicationCount(int applicantId)
         {
-            var applications = db.GetApplicantApplications(applicantId);
+            var applications = applicationRepository.GetApplicantApplications(applicantId);
             return applications.Count(a => a.ApplicationStatus.Equals("Pending", StringComparison.OrdinalIgnoreCase));
         }
     }

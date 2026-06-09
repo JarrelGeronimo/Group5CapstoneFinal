@@ -159,7 +159,7 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
-        private bool UsernameExists(string username)
+        public bool UsernameExists(string username)
         {
             try
             {
@@ -207,7 +207,7 @@ namespace HRAndApplicantSystem.Database
                     }
 
                     // Get UserID from username
-                    int userID = GetUserIdByUsername(username);
+                    int userID = GetUserIDByUsername(username);
                     if (userID == -1)
                     {
                         Console.WriteLine("User not found.");
@@ -255,7 +255,7 @@ namespace HRAndApplicantSystem.Database
                     conn.Open();
 
                     // Get UserID from username first
-                    int userID = GetUserIdByUsername(username);
+                    int userID = GetUserIDByUsername(username);
                     if (userID == -1)
                     {
                         Console.WriteLine($"Error: UserID not found for username: {username}");
@@ -386,37 +386,6 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error updating applicant info: {ex.Message}");
                 return false;
             }
-        }
-
-        private int GetUserIdByUsername(string username)
-        {
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-
-                    string query = "SELECT [UserID] FROM [Users] WHERE [Username] = @username";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@username", username);
-
-                        object result = cmd.ExecuteScalar();
-
-                        if (result != null && result != DBNull.Value)
-                        {
-                            return Convert.ToInt32(result);
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting user ID: {ex.Message}");
-            }
-
-            return -1;
         }
 
         public int GetUserIDByUsername(string username)
@@ -1217,6 +1186,46 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error deleting application: {ex.Message}");
                 return false;
             }
+        }
+
+        public Application GetApplicationByID(int applicationID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT [ApplicationID], [ApplicantID], [JobID], [Status], [DateApplied] 
+                                    FROM [Applications] WHERE [ApplicationID] = @applicationID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicationID", applicationID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                return new Application
+                                {
+                                    ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
+                                    ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    ApplicationStatus = reader["Status"]?.ToString() ?? "",
+                                    DateApplied = Convert.ToDateTime(reader["DateApplied"])
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving application: {ex.Message}");
+            }
+
+            return null;
         }
 
         public bool RecordStatusChange(int applicationID, string status, string remarks, string changedBy)
@@ -2962,3 +2971,5 @@ namespace HRAndApplicantSystem.Database
                 return new List<dynamic>();
             }
         }
+    }
+}

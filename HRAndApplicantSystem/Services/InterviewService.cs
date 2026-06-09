@@ -1,15 +1,21 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
+using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 
 namespace HRAndApplicantSystem.Services
 {
     public class InterviewService
     {
+        private readonly IInterviewRepository interviewRepository;
+        private readonly IApplicationRepository applicationRepository;
         private readonly DatabaseHelper db;
 
-        public InterviewService()
+        public InterviewService(IInterviewRepository interRepo = null, IApplicationRepository appRepo = null)
         {
-            db = new DatabaseHelper();
+            interviewRepository = interRepo ?? new InterviewRepository(new DatabaseHelper());
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
+            db = new DatabaseHelper(); // Temporary for non-repository operations
         }
 
         // ── Show shortlisted applicants and pick one to schedule ──
@@ -65,7 +71,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     SCHEDULE INTERVIEW                       ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var shortlisted = db.GetApplicationsByStatus("Shortlisted");
+            var shortlisted = db.GetApplicationsByStatus(ApplicationStatus.Shortlisted);
 
             if (shortlisted.Count == 0)
             {
@@ -197,7 +203,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     EVALUATE INTERVIEW                       ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var forInterview = db.GetApplicationsByStatus("Interview Scheduled");
+            var forInterview = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (forInterview.Count == 0)
             {
@@ -276,7 +282,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("2. Rejected");
             Console.Write("Select recommendation: ");
             string recChoice = Console.ReadLine()?.Trim() ?? "2";
-            string newStatus = recChoice == "1" ? "For Final Review" : "Rejected";
+            string newStatus = recChoice == "1" ? "For Final Review" : ApplicationStatus.Rejected;
 
             bool success = db.EvaluateInterview(
                 selected.ApplicationID,
@@ -311,7 +317,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     CANCEL INTERVIEW                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus("Interview Scheduled");
+            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (scheduled.Count == 0)
             {
@@ -387,7 +393,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     RESCHEDULE INTERVIEW                     ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus("Interview Scheduled");
+            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (scheduled.Count == 0)
             {

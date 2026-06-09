@@ -104,7 +104,7 @@ namespace HRAndApplicantSystem.Services
                 string remarks = Console.ReadLine()?.Trim() ?? "";
 
                 // Save as Submitted (applicant can provide remarks/description)
-                if (db.SubmitApplicantDocument(applicantID, jobID, selectedReq.RequirementTypeID, remarks, "Submitted"))
+                if (db.SubmitApplicantDocument(applicantID, jobID, selectedReq.RequirementTypeID, remarks, ApplicationStatus.Submitted))
                 {
                     Console.WriteLine($"\n✓ Document submitted: {selectedReq.RequirementName}");
                     Console.WriteLine("You can update this document later if needed.");

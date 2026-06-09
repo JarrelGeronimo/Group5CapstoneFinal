@@ -3,9 +3,6 @@ using HRAndApplicantSystem.Login;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 using HRAndApplicantSystem.Services;
-using ApplicantModel = HRAndApplicantSystem.Models.Applicant;
-using ApplicationServiceNS = HRAndApplicantSystem.Services.ApplicationService;
-
 
 LoginService loginService = new LoginService();
 bool running = true;
@@ -80,27 +77,21 @@ static void HandleLogin(LoginService loginService)
 
 static void ShowApplicantDashboard(string username)
 {
-    ApplicationServiceNS appService = new ApplicationServiceNS();
     DatabaseHelper db = new DatabaseHelper();
 
-    // Check if applicant has already filled in their info
-    ApplicantModel applicant = appService.GetApplicantInfo(username);
+    // Retrieve applicant info from database
+    Applicant applicant = db.GetApplicantByUsername(username);
 
     if (applicant == null)
     {
-        Console.WriteLine("\nIt looks like you haven't completed your profile yet.");
-        Console.WriteLine("Please fill in your information to proceed.\n");
-        appService.CollectApplicantInfo(username);
-        // Retrieve the newly created applicant info
-        applicant = appService.GetApplicantInfo(username);
+        Console.WriteLine("\nError: Could not retrieve applicant information.");
+        Console.WriteLine("Please contact support if this issue persists.");
+        return;
     }
 
-    if (applicant != null)
-    {
-        // Use the new ApplicantDashboardService
-        ApplicantDashboardService dashboardService = new ApplicantDashboardService();
-        dashboardService.ShowDashboard(applicant, username);
-    }
+    // Use the new ApplicantDashboardService
+    ApplicantDashboardService dashboardService = new ApplicantDashboardService();
+    dashboardService.ShowDashboard(applicant, username);
 }
 
 static void ShowHRDashboard(string hrUsername)
@@ -118,10 +109,10 @@ static void HandleRegistration(LoginService loginService)
 
     if (success)
     {
-        Console.WriteLine("Registration successful! You can now login.");
+        Console.WriteLine("Registration successful! You can now log in.");
     }
     else
     {
-        Console.WriteLine("Registration failed. Username may already exist.");
+        Console.WriteLine("Registration failed. Please try again.");
     }
 }

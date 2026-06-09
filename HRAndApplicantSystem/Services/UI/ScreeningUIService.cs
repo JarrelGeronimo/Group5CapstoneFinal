@@ -1,21 +1,28 @@
-using HRAndApplicantSystem.Database;
-using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
+using HRAndApplicantSystem.Services.Business;
 
-namespace HRAndApplicantSystem.Services
+namespace HRAndApplicantSystem.Services.UI
 {
-    public class ScreeningService
+    /// <summary>
+    /// UI rendering for screening operations.
+    /// Handles all console output and user interaction.
+    /// Uses ScreeningBusinessService for business logic.
+    /// </summary>
+    public class ScreeningUIService
     {
-        private readonly DatabaseHelper db;
+        private readonly ScreeningBusinessService businessService;
 
-        public ScreeningService()
+        public ScreeningUIService(ScreeningBusinessService businessService = null)
         {
-            db = new DatabaseHelper();
+            this.businessService = businessService ?? new ScreeningBusinessService();
         }
 
-        public void ScreenApplication(int applicationID, string hrUsername)
+        /// <summary>
+        /// Display screening interface for HR staff
+        /// </summary>
+        public void ScreenApplication(int applicationId, string hrUsername)
         {
-            var appDetails = db.GetApplicationDetailsForScreening(applicationID);
+            var appDetails = businessService.GetApplicationDetailsForScreening(applicationId);
 
             if (appDetails == null)
             {
@@ -23,15 +30,26 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            // First, update status to "Under Review"
-            db.UpdateApplicationStatus(applicationID, ApplicationStatus.UnderReview, "HR screening started", hrUsername);
+            // Update status to under review
+            businessService.UpdateToUnderReview(applicationId, hrUsername);
 
+            RenderScreeningHeader();
+            RenderApplicantInformation(appDetails);
+            RenderPositionInformation(appDetails);
+            RenderSubmittedDocuments(appDetails);
+            RenderScreeningDecision(applicationId, appDetails, hrUsername);
+        }
+
+        private void RenderScreeningHeader()
+        {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
             Console.WriteLine("║     APPLICATION SCREENING                    ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+        }
 
-            // Display applicant information
+        private void RenderApplicantInformation(dynamic appDetails)
+        {
             Console.WriteLine("=== APPLICANT INFORMATION ===\n");
             Console.WriteLine($"Name: {appDetails.FirstName} {appDetails.LastName}");
             Console.WriteLine($"Contact: {appDetails.ContactNo}");
@@ -39,15 +57,19 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine($"Education: {appDetails.Education}");
             Console.WriteLine($"Skills: {appDetails.Skills}");
             Console.WriteLine($"Applied Date: {appDetails.DateApplied:MMMM dd, yyyy HH:mm}\n");
+        }
 
-            // Display job information
+        private void RenderPositionInformation(dynamic appDetails)
+        {
             Console.WriteLine("=== POSITION INFORMATION ===\n");
             Console.WriteLine($"Job Title: {appDetails.JobTitle}");
             Console.WriteLine($"Description:\n{appDetails.JobDetail}\n");
+        }
 
-            // Display submitted documents
+        private void RenderSubmittedDocuments(dynamic appDetails)
+        {
             Console.WriteLine("=== SUBMITTED DOCUMENTS ===\n");
-            var documents = db.GetApplicantDocuments(appDetails.ApplicantID, appDetails.JobID);
+            var documents = businessService.GetApplicantDocuments(appDetails.ApplicantID, appDetails.JobID);
 
             if (documents.Count == 0)
             {
@@ -66,8 +88,10 @@ namespace HRAndApplicantSystem.Services
             }
 
             Console.WriteLine("\n" + new string('=', 45));
+        }
 
-            // Screening decision
+        private void RenderScreeningDecision(int applicationId, dynamic appDetails, string hrUsername)
+        {
             Console.WriteLine("\n=== SCREENING DECISION ===\n");
             Console.WriteLine("1. Shortlist (Qualified)");
             Console.WriteLine("2. Reject (Not Qualified)");
@@ -84,14 +108,20 @@ namespace HRAndApplicantSystem.Services
                 return;
             }
 
-            string result = choice == "1" ? "Qualified" : "Not Qualified";
-            string newStatus = choice == "1" ? ApplicationStatus.Shortlisted : ApplicationStatus.Rejected;
+            if (!businessService.IsValidScreeningDecision(choice))
+            {
+                Console.WriteLine("\n✗ Invalid choice.");
+                System.Threading.Thread.Sleep(1500);
+                return;
+            }
+
+            var (result, newStatus) = businessService.GetDecisionFromChoice(choice);
 
             Console.Write("\nAdd remarks/feedback: ");
             string remarks = Console.ReadLine()?.Trim() ?? "";
 
             // Update the screening result
-            if (db.ScreenApplication(applicationID, result, remarks, hrUsername))
+            if (businessService.ScreenApplication(applicationId, result, remarks, hrUsername))
             {
                 Console.WriteLine($"\n✓ Application marked as {newStatus}");
                 Console.WriteLine("Status history has been recorded.");

@@ -1,14 +1,18 @@
 using HRAndApplicantSystem.Database;
+using HRAndApplicantSystem.Infrastructure.Repositories;
+using HRAndApplicantSystem.Models;
 
 namespace HRAndApplicantSystem.Services
 {
     public class HiringDecisionService
     {
+        private readonly IApplicationRepository applicationRepository;
         private readonly DatabaseHelper db;
 
-        public HiringDecisionService()
+        public HiringDecisionService(IApplicationRepository appRepo = null)
         {
-            db = new DatabaseHelper();
+            applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
+            db = new DatabaseHelper(); // Temporary for non-repository operations
         }
 
         public void ShowHiringDecisionMenu(string managerUsername)
@@ -35,10 +39,10 @@ namespace HRAndApplicantSystem.Services
                         ReviewForFinalDecision(managerUsername);
                         break;
                     case "2":
-                        ViewDecidedApplicants("Accepted");
+                        ViewDecidedApplicants(ApplicationStatus.Accepted);
                         break;
                     case "3":
-                        ViewDecidedApplicants("Rejected");
+                        ViewDecidedApplicants(ApplicationStatus.Rejected);
                         break;
                     case "4":
                         running = false;
@@ -117,8 +121,8 @@ namespace HRAndApplicantSystem.Services
 
             string finalDecision = decisionChoice switch
             {
-                "1" => "Accepted",
-                "2" => "Rejected",
+                "1" => ApplicationStatus.Accepted,
+                "2" => ApplicationStatus.Rejected,
                 "3" => "On Hold",
                 _   => null
             };
