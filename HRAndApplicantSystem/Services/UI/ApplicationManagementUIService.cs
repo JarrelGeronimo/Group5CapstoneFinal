@@ -1,5 +1,6 @@
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Services.Business;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Services.UI
 {
@@ -83,7 +84,7 @@ namespace HRAndApplicantSystem.Services.UI
             {
                 var selectedApp = appList[choice - 1];
                 
-                var application = new Application
+                var application = new ApplicationModel
                 {
                     ApplicationID = (int)selectedApp.ApplicationID,
                     ApplicantID = (int)selectedApp.ApplicantID,
@@ -96,7 +97,7 @@ namespace HRAndApplicantSystem.Services.UI
             }
         }
 
-        private void ShowApplicationDetails(Application application, Applicant applicant)
+        private void ShowApplicationDetails(ApplicationModel application, Applicant applicant)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -114,7 +115,7 @@ namespace HRAndApplicantSystem.Services.UI
             DisplayActionMenu(application, applicant);
         }
 
-        private void DisplayActionMenu(Application application, Applicant applicant)
+        private void DisplayActionMenu(ApplicationModel application, Applicant applicant)
         {
             Console.WriteLine("\n=== Actions ===\n");
             Console.WriteLine("1. View Application Summary");
@@ -144,7 +145,7 @@ namespace HRAndApplicantSystem.Services.UI
             Console.ReadKey();
         }
 
-        private void HandleApplicationAction(string choice, Application application, Applicant applicant)
+        private void HandleApplicationAction(string choice, ApplicationModel application, Applicant applicant)
         {
             if (businessService.IsDraft(application.ApplicationStatus))
             {
@@ -182,7 +183,7 @@ namespace HRAndApplicantSystem.Services.UI
             }
         }
 
-        private void ShowApplicationSummary(Application application)
+        private void ShowApplicationSummary(ApplicationModel application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -193,7 +194,7 @@ namespace HRAndApplicantSystem.Services.UI
             Console.WriteLine("\n" + new string('=', 45));
         }
 
-        private void ShowInterviewDetails(Application application)
+        private void ShowInterviewDetails(ApplicationModel application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -240,7 +241,7 @@ namespace HRAndApplicantSystem.Services.UI
             Console.ReadKey();
         }
 
-        private void ResumeDraft(Application application)
+        private void ResumeDraft(ApplicationModel application)
         {
             var jobVacancy = businessService.GetJobVacancy(application.JobID);
             if (jobVacancy == null)
@@ -262,7 +263,7 @@ namespace HRAndApplicantSystem.Services.UI
             workflowService.ResumeDraftApplication(jobVacancy, applicant, application.ApplicationID);
         }
 
-        private void DeleteDraft(Application application)
+        private void DeleteDraft(ApplicationModel application)
         {
             Console.WriteLine("\nAre you sure you want to delete this draft? (yes/no): ");
             string confirm = (Console.ReadLine()?.Trim() ?? "no").ToLower();
@@ -282,7 +283,7 @@ namespace HRAndApplicantSystem.Services.UI
             }
         }
 
-        private void ManageApplicationDocuments(Application application)
+        private void ManageApplicationDocuments(ApplicationModel application)
         {
             if (!businessService.IsEditable(application.ApplicationStatus))
             {

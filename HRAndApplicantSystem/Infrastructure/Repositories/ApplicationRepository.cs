@@ -1,5 +1,6 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Models;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Infrastructure.Repositories
 {
@@ -60,7 +61,7 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
             return db.CheckAllJobRequirementsSubmitted(applicantID, jobID);
         }
 
-        public Application GetApplicationByID(int applicationID)
+        public ApplicationModel GetApplicationByID(int applicationID)
         {
             var apps = db.GetApplicantApplications(-1);
             // This is a workaround since DatabaseHelper doesn't have GetApplicationByID

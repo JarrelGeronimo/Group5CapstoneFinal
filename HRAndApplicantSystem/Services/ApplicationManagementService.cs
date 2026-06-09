@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -71,7 +72,7 @@ namespace HRAndApplicantSystem.Services
                 var selectedApp = appList[choice - 1];
                 
                 // Create application object with additional details
-                var application = new Application
+                var application = new ApplicationModel
                 {
                     ApplicationID = (int)selectedApp.ApplicationID,
                     ApplicantID = (int)selectedApp.ApplicantID,
@@ -84,7 +85,7 @@ namespace HRAndApplicantSystem.Services
             }
         }
 
-        private void ShowApplicationDetails(Application application, Applicant applicant)
+        private void ShowApplicationDetails(ApplicationModel application, Applicant applicant)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -176,7 +177,7 @@ namespace HRAndApplicantSystem.Services
             Console.ReadKey();
         }
 
-        private void ResumeDraft(Application application)
+        private void ResumeDraft(ApplicationModel application)
         {
             // Get the job details for the draft application
             var jobVacancy = db.GetJobVacancyByID(application.JobID);
@@ -201,7 +202,7 @@ namespace HRAndApplicantSystem.Services
             workflowService.ResumeDraftApplication(jobVacancy, applicant, application.ApplicationID);
         }
 
-        private void DeleteDraft(Application application)
+        private void DeleteDraft(ApplicationModel application)
         {
             Console.WriteLine("\nAre you sure you want to delete this draft? (yes/no): ");
             string confirm = (Console.ReadLine()?.Trim() ?? "no").ToLower();
@@ -221,7 +222,7 @@ namespace HRAndApplicantSystem.Services
             }
         }
 
-        private void ViewApplicationSummary(Application application)
+        private void ViewApplicationSummary(ApplicationModel application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -234,7 +235,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("\n" + new string('=', 45));
         }
 
-        private void ViewInterviewDetails(Application application)
+        private void ViewInterviewDetails(ApplicationModel application)
         {
             Console.Clear();
             Console.WriteLine("╔══════════════════════════════════════════════╗");
@@ -292,7 +293,7 @@ namespace HRAndApplicantSystem.Services
                 a.ApplicationStatus == ApplicationStatus.UnderReview);
         }
 
-        private void ManageApplicationDocuments(Application application)
+        private void ManageApplicationDocuments(ApplicationModel application)
         {
             // Check if application is editable (Draft or Submitted status only)
             if (application.ApplicationStatus != ApplicationStatus.Draft && application.ApplicationStatus != ApplicationStatus.Submitted)

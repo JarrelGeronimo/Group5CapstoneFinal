@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
 using HRAndApplicantSystem.Models;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Services.Business
 {
@@ -31,7 +32,7 @@ namespace HRAndApplicantSystem.Services.Business
         /// <summary>
         /// Get an application by ID with additional details
         /// </summary>
-        public Application GetApplicationDetails(int applicationId)
+        public ApplicationModel GetApplicationDetails(int applicationId)
         {
             return db.GetApplicationByID(applicationId);
         }

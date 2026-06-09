@@ -1,0 +1,21 @@
+namespace HRAndApplicantSystem.Forms
+{
+    partial class MainForm
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private void MainForm_Designer()
+        {
+            components = new System.ComponentModel.Container();
+        }
+    }
+}

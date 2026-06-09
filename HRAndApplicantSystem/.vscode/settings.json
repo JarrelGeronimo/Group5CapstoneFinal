@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "Test-Path": true,
+        ".\\HRAndApplicantSystem.exe": true,
+        "Push-Location": true,
+        "&dotnet": true
+    }
+}

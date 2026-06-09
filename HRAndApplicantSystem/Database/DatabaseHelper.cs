@@ -4,6 +4,7 @@ using System.IO;
 using System.Data.OleDb;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Database
 {
@@ -1188,7 +1189,7 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
-        public Application GetApplicationByID(int applicationID)
+        public ApplicationModel GetApplicationByID(int applicationID)
         {
             try
             {
@@ -1207,7 +1208,7 @@ namespace HRAndApplicantSystem.Database
                         {
                             if (reader.Read())
                             {
-                                return new Application
+                                return new ApplicationModel
                                 {
                                     ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
                                     ApplicantID = Convert.ToInt32(reader["ApplicantID"]),

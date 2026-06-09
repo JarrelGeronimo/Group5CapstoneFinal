@@ -1,4 +1,5 @@
 using HRAndApplicantSystem.Models;
+using ApplicationModel = HRAndApplicantSystem.Models.Application;
 
 namespace HRAndApplicantSystem.Infrastructure.Repositories
 {
@@ -55,7 +56,7 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
         /// <summary>
         /// Gets application by ID
         /// </summary>
-        Application GetApplicationByID(int applicationID);
+        ApplicationModel GetApplicationByID(int applicationID);
 
         /// <summary>
         /// Checks if applicant has applied for a specific job
