@@ -28,18 +28,30 @@ namespace HRAndApplicantSystem.Login
 
         private void LoginButton_Click(object sender, EventArgs e)
         {
-            string username = usernameTextBox.Text;
+            ClearStatus();
+
+            string username = usernameTextBox.Text.Trim();
             string password = passwordTextBox.Text;
 
+            // Validation
             if (string.IsNullOrWhiteSpace(username))
             {
-                MessageBox.Show("Please enter a username.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Please enter a username.");
+                usernameTextBox.Focus();
+                return;
+            }
+
+            if (username.Length < 3)
+            {
+                ShowError("Username must be at least 3 characters.");
+                usernameTextBox.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                MessageBox.Show("Please enter a password.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Please enter a password.");
+                passwordTextBox.Focus();
                 return;
             }
 
@@ -68,37 +80,50 @@ namespace HRAndApplicantSystem.Login
                 }
                 else
                 {
-                    MessageBox.Show("Invalid username or password.", "Login Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowError("Invalid username or password. Please try again.");
                     passwordTextBox.Clear();
                     usernameTextBox.Focus();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred during login: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowError($"Login error: {ex.Message}");
             }
         }
 
         private void RegisterButton_Click(object sender, EventArgs e)
         {
-            string username = usernameTextBox.Text;
+            ClearStatus();
+
+            string username = usernameTextBox.Text.Trim();
             string password = passwordTextBox.Text;
 
+            // Validation
             if (string.IsNullOrWhiteSpace(username))
             {
-                MessageBox.Show("Please enter a username.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Please enter a username.");
+                usernameTextBox.Focus();
+                return;
+            }
+
+            if (username.Length < 3)
+            {
+                ShowError("Username must be at least 3 characters.");
+                usernameTextBox.Focus();
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(password))
             {
-                MessageBox.Show("Please enter a password.", "Input Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Please enter a password.");
+                passwordTextBox.Focus();
                 return;
             }
 
-            if (password.Length < 8)
+            if (password.Length < 6)
             {
-                MessageBox.Show("Password must be at least 8 characters long.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ShowError("Password must be at least 6 characters long.");
+                passwordTextBox.Focus();
                 return;
             }
 
@@ -108,26 +133,47 @@ namespace HRAndApplicantSystem.Login
 
                 if (registerSuccess)
                 {
-                    MessageBox.Show("Registration successful! You can now login with your credentials.", "Registration Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    ShowSuccess("Registration successful! You can now login.");
                     usernameTextBox.Clear();
                     passwordTextBox.Clear();
                     usernameTextBox.Focus();
                 }
                 else
                 {
-                    MessageBox.Show("Registration failed. Username may already exist.", "Registration Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ShowError("Registration failed. Username may already exist.");
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred during registration: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ShowError($"Registration error: {ex.Message}");
             }
+        }
+
+        private void ShowError(string message)
+        {
+            statusLabel.ForeColor = System.Drawing.Color.FromArgb(220, 20, 60);
+            statusLabel.Text = message;
+            statusLabel.Visible = true;
+        }
+
+        private void ShowSuccess(string message)
+        {
+            statusLabel.ForeColor = System.Drawing.Color.FromArgb(34, 139, 34);
+            statusLabel.Text = message;
+            statusLabel.Visible = true;
+        }
+
+        private void ClearStatus()
+        {
+            statusLabel.Visible = false;
+            statusLabel.Text = "";
         }
 
         private void ClearLoginFields()
         {
             usernameTextBox.Clear();
             passwordTextBox.Clear();
+            ClearStatus();
         }
     }
 }

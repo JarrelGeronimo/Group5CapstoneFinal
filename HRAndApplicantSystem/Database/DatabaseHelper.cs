@@ -586,6 +586,43 @@ namespace HRAndApplicantSystem.Database
             return null;
         }
 
+        public List<dynamic> GetActiveJobsAsDynamic()
+        {
+            List<dynamic> jobs = new List<dynamic>();
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail] as JobDescription, [Status] FROM [JobVacancies] WHERE [Status] = 'Active' ORDER BY [JobID] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                dynamic job = new System.Dynamic.ExpandoObject();
+                                var jobDict = (IDictionary<string, object>)job;
+                                jobDict["JobID"] = Convert.ToInt32(reader["JobID"]);
+                                jobDict["JobTitle"] = reader["JobTitle"]?.ToString() ?? "";
+                                jobDict["JobDescription"] = reader["JobDescription"]?.ToString() ?? "";
+                                jobDict["Status"] = reader["Status"]?.ToString() ?? "";
+                                jobs.Add(job);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving active jobs: {ex.Message}");
+            }
+
+            return jobs;
+        }
+
         public bool HasApplicantAppliedForJob(int applicantID, int jobID)
         {
             try
@@ -2969,6 +3006,66 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error retrieving all applicants: {ex.Message}");
+                return new List<dynamic>();
+            }
+        }
+
+        public List<dynamic> GetAllApplicantsWithApplications()
+        {
+            try
+            {
+                var results = new List<dynamic>();
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                    ap.[ApplicantID],
+                                    ap.[First Name] as FirstName,
+                                    ap.[Last Name] as LastName,
+                                    ap.[ContactNo],
+                                    ap.[Education],
+                                    ap.[Skills],
+                                    u.[Username],
+                                    MAX(a.[Status]) as LatestStatus,
+                                    MAX(a.[DateApplied]) as LatestApplicationDate,
+                                    COUNT(a.[ApplicationID]) as ApplicationCount
+                                FROM [Applicants] ap
+                                INNER JOIN [Users] u ON ap.[UserID] = u.[UserID]
+                                LEFT JOIN [Applications] a ON ap.[ApplicantID] = a.[ApplicantID]
+                                GROUP BY ap.[ApplicantID], ap.[First Name], ap.[Last Name], ap.[ContactNo], ap.[Education], ap.[Skills], u.[Username]
+                                ORDER BY ap.[Last Name], ap.[First Name]";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                results.Add(new
+                                {
+                                    ApplicantID = Convert.ToInt32(reader["ApplicantID"]),
+                                    FirstName = reader["FirstName"]?.ToString() ?? "",
+                                    LastName = reader["LastName"]?.ToString() ?? "",
+                                    ContactNo = reader["ContactNo"]?.ToString() ?? "",
+                                    Education = reader["Education"]?.ToString() ?? "",
+                                    Skills = reader["Skills"]?.ToString() ?? "",
+                                    Username = reader["Username"]?.ToString() ?? "",
+                                    LatestStatus = reader["LatestStatus"]?.ToString() ?? "N/A",
+                                    LatestApplicationDate = reader["LatestApplicationDate"] != DBNull.Value 
+                                        ? Convert.ToDateTime(reader["LatestApplicationDate"]).ToString("yyyy-MM-dd") 
+                                        : "N/A",
+                                    ApplicationCount = Convert.ToInt32(reader["ApplicationCount"])
+                                });
+                            }
+                        }
+                    }
+                }
+                return results;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving all applicants with applications: {ex.Message}");
                 return new List<dynamic>();
             }
         }

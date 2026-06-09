@@ -160,31 +160,56 @@ namespace HRAndApplicantSystem.Forms
             titleLabel.Margin = new Padding(10, 10, 10, 20);
             contentPanel.Controls.Add(titleLabel);
 
-            // Quick action panel - View Applicants
-            Button viewApplicantsButton = new Button();
-            viewApplicantsButton.Text = "View Applicants";
-            viewApplicantsButton.Size = new System.Drawing.Size(300, 100);
-            viewApplicantsButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
-            viewApplicantsButton.ForeColor = System.Drawing.Color.White;
-            viewApplicantsButton.Font = new Font("Arial", 12, FontStyle.Bold);
-            viewApplicantsButton.Cursor = Cursors.Hand;
-            viewApplicantsButton.Margin = new Padding(10);
-            viewApplicantsButton.FlatStyle = FlatStyle.Flat;
-            viewApplicantsButton.Click += (s, e) => OpenApplicantListForm();
-            contentPanel.Controls.Add(viewApplicantsButton);
+            // Workflow Stage 1: Review Pending Applications
+            Button reviewAppsButton = new Button();
+            reviewAppsButton.Text = "1. Review Pending\nApplications";
+            reviewAppsButton.Size = new System.Drawing.Size(300, 100);
+            reviewAppsButton.BackColor = System.Drawing.Color.FromArgb(70, 130, 180);
+            reviewAppsButton.ForeColor = System.Drawing.Color.White;
+            reviewAppsButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            reviewAppsButton.Cursor = Cursors.Hand;
+            reviewAppsButton.Margin = new Padding(10);
+            reviewAppsButton.FlatStyle = FlatStyle.Flat;
+            reviewAppsButton.Click += (s, e) => OpenApplicationsFormFiltered("Pending");
+            contentPanel.Controls.Add(reviewAppsButton);
 
-            // Quick action panel - Manage Applications
-            Button manageAppsButton = new Button();
-            manageAppsButton.Text = "Manage Applications";
-            manageAppsButton.Size = new System.Drawing.Size(300, 100);
-            manageAppsButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
-            manageAppsButton.ForeColor = System.Drawing.Color.White;
-            manageAppsButton.Font = new Font("Arial", 12, FontStyle.Bold);
-            manageAppsButton.Cursor = Cursors.Hand;
-            manageAppsButton.Margin = new Padding(10);
-            manageAppsButton.FlatStyle = FlatStyle.Flat;
-            manageAppsButton.Click += (s, e) => OpenApplicationsForm();
-            contentPanel.Controls.Add(manageAppsButton);
+            // Workflow Stage 2: Conduct Interviews
+            Button interviewsButton = new Button();
+            interviewsButton.Text = "2. Conduct\nInterviews";
+            interviewsButton.Size = new System.Drawing.Size(300, 100);
+            interviewsButton.BackColor = System.Drawing.Color.FromArgb(70, 130, 180);
+            interviewsButton.ForeColor = System.Drawing.Color.White;
+            interviewsButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            interviewsButton.Cursor = Cursors.Hand;
+            interviewsButton.Margin = new Padding(10);
+            interviewsButton.FlatStyle = FlatStyle.Flat;
+            interviewsButton.Click += (s, e) => OpenApplicationsFormFiltered("Screening");
+            contentPanel.Controls.Add(interviewsButton);
+
+            // Workflow Stage 3: Make Hiring Decisions (Manager/Admin Only)
+            Button hiringButton = new Button();
+            hiringButton.Text = "3. Make Hiring\nDecisions";
+            hiringButton.Size = new System.Drawing.Size(300, 100);
+            hiringButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
+            hiringButton.ForeColor = System.Drawing.Color.White;
+            hiringButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            hiringButton.Cursor = Cursors.Hand;
+            hiringButton.Margin = new Padding(10);
+            hiringButton.FlatStyle = FlatStyle.Flat;
+            
+            // Enable only for Manager (3) or Admin (4)
+            if (_currentUser.RoleID == 3 || _currentUser.RoleID == 4)
+            {
+                hiringButton.Click += (s, e) => OpenApplicationsFormFiltered("Interview");
+            }
+            else
+            {
+                hiringButton.BackColor = System.Drawing.Color.FromArgb(169, 169, 169);
+                hiringButton.Enabled = false;
+                hiringButton.Click += (s, e) => MessageBox.Show("Only HR Manager or Admin can make hiring decisions.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            
+            contentPanel.Controls.Add(hiringButton);
 
             // Quick action panel - Reports
             Button reportsButton = new Button();
@@ -240,7 +265,28 @@ namespace HRAndApplicantSystem.Forms
 
         private void OpenApplicationsForm()
         {
-            MessageBox.Show("Applications management coming soon", "Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                ApplicationManagementForm form = new ApplicationManagementForm(_db, _currentUser.RoleID);
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening applications: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void OpenApplicationsFormFiltered(string statusFilter)
+        {
+            try
+            {
+                ApplicationManagementForm form = new ApplicationManagementForm(_db, _currentUser.RoleID, statusFilter);
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening applications: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void LogoutUser()
