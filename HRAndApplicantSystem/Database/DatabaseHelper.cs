@@ -14,26 +14,26 @@ namespace HRAndApplicantSystem.Database
         public DatabaseHelper()
         {
             string dbPath = "";
-            
+
             // Try multiple strategies to find the database
             // Strategy 1: Relative to the assembly location (works in VS and VS Code)
             string assemblyDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) ?? "";
             dbPath = Path.Combine(assemblyDir, "..", "..", "..", "Database", "HRApplicantData.accdb");
             dbPath = Path.GetFullPath(dbPath);
-            
+
             if (!File.Exists(dbPath))
             {
                 // Strategy 2: Try from current working directory
                 dbPath = Path.Combine(Directory.GetCurrentDirectory(), "Database", "HRApplicantData.accdb");
             }
-            
+
             if (!File.Exists(dbPath))
             {
                 // Strategy 3: Try one more level up
                 dbPath = Path.Combine(assemblyDir, "..", "..", "..", "..", "Database", "HRApplicantData.accdb");
                 dbPath = Path.GetFullPath(dbPath);
             }
-            
+
             connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
         }
 
@@ -46,10 +46,10 @@ namespace HRAndApplicantSystem.Database
                     conn.Open();
 
                     // Accept all valid roles
-                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (" + 
-                        RoleConstants.APPLICANT + ", " + 
-                        RoleConstants.HR + ", " + 
-                        RoleConstants.HR_MANAGER + ", " + 
+                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (" +
+                        RoleConstants.APPLICANT + ", " +
+                        RoleConstants.HR + ", " +
+                        RoleConstants.HR_MANAGER + ", " +
                         RoleConstants.ADMIN + "))";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
@@ -62,7 +62,7 @@ namespace HRAndApplicantSystem.Database
                             return false;
 
                         string storedPassword = result.ToString();
-                        
+
                         // Try to verify as a hashed password first
                         if (PasswordHasher.VerifyPassword(password, storedPassword))
                             return true;
@@ -522,7 +522,7 @@ namespace HRAndApplicantSystem.Database
             try
             {
                 int roleID = GetUserRoleByUsername(username);
-                
+
                 return roleID switch
                 {
                     RoleConstants.APPLICANT => "Applicant",
@@ -771,7 +771,7 @@ namespace HRAndApplicantSystem.Database
                         OleDbParameter statusParam = new OleDbParameter("@status", OleDbType.VarWChar);
                         statusParam.Value = "Submitted";
                         cmd.Parameters.Add(statusParam);
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@dateApplied", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
@@ -905,7 +905,7 @@ namespace HRAndApplicantSystem.Database
                         checkCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
 
                         object result = checkCmd.ExecuteScalar();
-                        
+
                         if (result != null && result != DBNull.Value)
                         {
                             // Update existing document
@@ -1136,7 +1136,7 @@ namespace HRAndApplicantSystem.Database
                         screenCmd.Parameters.Add(new OleDbParameter("@result", result));
                         screenCmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
                         screenCmd.Parameters.Add(new OleDbParameter("@screenedBy", hrUsername));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@dateScreened", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         screenCmd.Parameters.Add(dateParam);
@@ -1177,7 +1177,7 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.AddWithValue("@applicationID", applicationID);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
-                        
+
                         if (rowsAffected > 0)
                         {
                             RecordStatusChange(applicationID, newStatus, remarks, changedBy);
@@ -1234,11 +1234,11 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(new OleDbParameter("@appID", applicationID));
                         cmd.Parameters.Add(new OleDbParameter("@status", status));
                         cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@dateChanged", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
-                        
+
                         cmd.Parameters.Add(new OleDbParameter("@changedBy", changedBy));
 
                         int rowsAffected = cmd.ExecuteNonQuery();
@@ -1272,7 +1272,7 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(new OleDbParameter("@userType", userType));
                         cmd.Parameters.Add(new OleDbParameter("@userID", userID > 0 ? userID : (object)DBNull.Value));
                         cmd.Parameters.Add(new OleDbParameter("@action", action));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@actionDate", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
@@ -1305,7 +1305,7 @@ namespace HRAndApplicantSystem.Database
                     {
                         cmd.Parameters.Add(new OleDbParameter("@userType", userType));
                         cmd.Parameters.Add(new OleDbParameter("@action", action));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@actionDate", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
@@ -1517,8 +1517,8 @@ namespace HRAndApplicantSystem.Database
 
             return applications;
         }
-            // Schedule Interview 
-        public bool ScheduleInterview(int applicationID, DateTime interviewDateTime,string interviewer, string mode, string location, string scheduledBy)
+        // Schedule Interview 
+        public bool ScheduleInterview(int applicationID, DateTime interviewDateTime, string interviewer, string mode, string location, string scheduledBy)
         {
             try
             {
@@ -1612,7 +1612,7 @@ namespace HRAndApplicantSystem.Database
             return null;
         }
 
-         // Evaluate Interview 
+        // Evaluate Interview 
         public bool EvaluateInterview(int applicationID, int score, string result,
             string remarks, string newStatus, string evaluatedBy)
         {
@@ -1633,11 +1633,11 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(new OleDbParameter("@score", score));
                         cmd.Parameters.Add(new OleDbParameter("@result", result));
                         cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@dateEvaluated", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
-                        
+
                         cmd.ExecuteNonQuery();
                     }
 
@@ -1697,11 +1697,11 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(new OleDbParameter("@decision", decision));
                         cmd.Parameters.Add(new OleDbParameter("@remarks", remarks));
                         cmd.Parameters.Add(new OleDbParameter("@decidedBy", decidedBy));
-                        
+
                         OleDbParameter dateParam = new OleDbParameter("@dateDecided", OleDbType.Date);
                         dateParam.Value = DateTime.Now;
                         cmd.Parameters.Add(dateParam);
-                        
+
                         cmd.ExecuteNonQuery();
                     }
 
@@ -1740,13 +1740,13 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
                     string query = "INSERT INTO [JobVacancies] ([JobTitle], [JobDetail], [Status]) VALUES (@title, @detail, @status)";
-                    
+
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@title", job.JobTitle ?? "");
                         cmd.Parameters.AddWithValue("@detail", job.JobDetail ?? "");
                         cmd.Parameters.AddWithValue("@status", job.Status ?? "Open");
-                        
+
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
                     }
@@ -1767,14 +1767,14 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
                     string query = "UPDATE [JobVacancies] SET [JobTitle] = @title, [JobDetail] = @detail, [Status] = @status WHERE [JobID] = @id";
-                    
+
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@title", job.JobTitle ?? "");
                         cmd.Parameters.AddWithValue("@detail", job.JobDetail ?? "");
                         cmd.Parameters.AddWithValue("@status", job.Status ?? "Open");
                         cmd.Parameters.AddWithValue("@id", job.JobID);
-                        
+
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
                     }
@@ -1795,7 +1795,7 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
                     string query = "DELETE FROM [JobVacancies] WHERE [JobID] = @id";
-                    
+
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@id", jobID);
@@ -1808,7 +1808,7 @@ namespace HRAndApplicantSystem.Database
             {
                 Console.WriteLine($"Error deleting job vacancy: {ex.Message}");
                 return false;
-           }
+            }
         }
         // ── APPLICATION STATUS HISTORY ────────────────────────
         public List<dynamic> GetApplicationStatusHistory(int applicationID)
@@ -1837,12 +1837,12 @@ namespace HRAndApplicantSystem.Database
                             {
                                 history.Add(new
                                 {
-                                    HistoryID     = Convert.ToInt32(reader["HistoryID"]),
+                                    HistoryID = Convert.ToInt32(reader["HistoryID"]),
                                     ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
-                                    Status        = reader["Status"]?.ToString() ?? "",
-                                    Remarks       = reader["Remarks"]?.ToString() ?? "",
-                                    DateChanged   = Convert.ToDateTime(reader["DateChanged"]),
-                                    ChangedBy     = reader["ChangedBy"]?.ToString() ?? ""
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    Remarks = reader["Remarks"]?.ToString() ?? "",
+                                    DateChanged = Convert.ToDateTime(reader["DateChanged"]),
+                                    ChangedBy = reader["ChangedBy"]?.ToString() ?? ""
                                 });
                             }
                         }
@@ -1984,7 +1984,7 @@ namespace HRAndApplicantSystem.Database
                     {
                         cmd.Parameters.Add(new OleDbParameter("@startDate", OleDbType.Date)).Value = startDate;
                         cmd.Parameters.Add(new OleDbParameter("@endDate", OleDbType.Date)).Value = endDate;
-                        
+
                         using (OleDbDataReader reader = cmd.ExecuteReader())
                         {
                             while (reader.Read())
@@ -2061,7 +2061,7 @@ namespace HRAndApplicantSystem.Database
 
                     // Record status change in history
                     RecordStatusChange(applicationID, "Under Review", $"Interview cancelled: {remarks}", cancelledBy);
-                    
+
                     // Log audit trail
                     string userRole = GetRoleNameByUsername(cancelledBy);
                     LogAuditTrail(userRole, cancelledBy, $"Cancelled Interview for Application #{applicationID}. Reason: {remarks}");
@@ -2268,7 +2268,7 @@ namespace HRAndApplicantSystem.Database
 
                     // All jobs require all requirement types from RequirementTypes table
                     var requiredRequirements = GetAllRequirementTypes();
-                    
+
                     if (requiredRequirements.Count == 0)
                     {
                         return true; // No requirements, can submit
@@ -2287,7 +2287,7 @@ namespace HRAndApplicantSystem.Database
                             cmd.Parameters.AddWithValue("@applicantID", applicantID);
                             cmd.Parameters.AddWithValue("@requirementTypeID", req.RequirementTypeID);
                             int count = (int)cmd.ExecuteScalar();
-                            
+
                             if (count == 0)
                             {
                                 return false; // At least one required document not submitted
@@ -2418,7 +2418,7 @@ namespace HRAndApplicantSystem.Database
                                           ORDER BY [Result]";
                     var resultBreakdown = new List<dynamic>();
                     int passCount = 0, failCount = 0;
-                    
+
                     using (OleDbCommand cmd = new OleDbCommand(resultQuery, conn))
                     {
                         using (OleDbDataReader reader = cmd.ExecuteReader())
@@ -2427,7 +2427,7 @@ namespace HRAndApplicantSystem.Database
                             {
                                 string result = reader["Result"]?.ToString() ?? "";
                                 int count = Convert.ToInt32(reader["Count"]);
-                                
+
                                 if (result.Contains("Pass") || result.Contains("Qualified"))
                                     passCount += count;
                                 else if (result.Contains("Fail") || result.Contains("Not Qualified"))
@@ -2494,7 +2494,7 @@ namespace HRAndApplicantSystem.Database
                             {
                                 int daysToHire = Convert.ToInt32(reader["DaysToHire"]);
                                 daysList.Add(daysToHire);
-                                
+
                                 timeToHireData.Add(new
                                 {
                                     ApplicationID = Convert.ToInt32(reader["ApplicationID"]),
@@ -2511,7 +2511,7 @@ namespace HRAndApplicantSystem.Database
                     double avgDays = totalApplications > 0 ? daysList.Average() : 0;
                     int minDays = totalApplications > 0 ? daysList.Min() : 0;
                     int maxDays = totalApplications > 0 ? daysList.Max() : 0;
-                    
+
                     // Calculate median
                     double medianDays = 0;
                     if (totalApplications > 0)

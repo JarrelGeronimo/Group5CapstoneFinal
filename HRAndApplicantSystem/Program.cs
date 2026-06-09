@@ -6,6 +6,7 @@ using HRAndApplicantSystem.Services;
 using ApplicantModel = HRAndApplicantSystem.Models.Applicant;
 using ApplicationServiceNS = HRAndApplicantSystem.Services.ApplicationService;
 
+
 LoginService loginService = new LoginService();
 bool running = true;
 
