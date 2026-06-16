@@ -15,10 +15,15 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeComponent()
         {
-            this.SuspendLayout();
-            this.AutoScroll = true;
-            this.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            this.ResumeLayout(false);
+            SuspendLayout();
+            // 
+            // ApplicationDraftForm
+            // 
+            AutoScroll = true;
+            BackColor = Color.FromArgb(240, 240, 240);
+            ClientSize = new Size(307, 253);
+            Name = "ApplicationDraftForm";
+            ResumeLayout(false);
         }
     }
 }

@@ -32,10 +32,12 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("JobVacanciesForm_Load: Starting");
                 LoadJobVacancies();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"JobVacanciesForm_Load Exception: {ex}");
                 MessageBox.Show($"Error loading vacancies: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -44,25 +46,45 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("LoadJobVacancies: Starting");
+                
                 // Get all active job vacancies
                 _allJobs = _db.GetActiveJobsAsDynamic();
+                System.Diagnostics.Debug.WriteLine($"LoadJobVacancies: Retrieved {_allJobs?.Count ?? 0} jobs from database");
+                
+                if (_allJobs != null && _allJobs.Count > 0)
+                {
+                    foreach (var job in _allJobs)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"  Job: {job.JobTitle}");
+                    }
+                }
+                
                 ApplyFilters();
                 UpdateStatusLabel();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"LoadJobVacancies Exception: {ex}");
                 MessageBox.Show($"Error loading jobs: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void ApplyFilters()
         {
-            if (_allJobs == null) return;
+            System.Diagnostics.Debug.WriteLine($"ApplyFilters: _allJobs count = {_allJobs?.Count ?? 0}");
+            
+            if (_allJobs == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ApplyFilters: _allJobs is null, populating empty list");
+                PopulateDataGridView(new List<dynamic>());
+                return;
+            }
 
-            var filtered = _allJobs;
+            var filtered = new List<dynamic>(_allJobs);
 
             // Filter by search term
-            string searchTerm = searchTextBox.Text.Trim();
+            string searchTerm = searchTextBox?.Text?.Trim() ?? "";
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
                 filtered = filtered.FindAll(j =>
@@ -70,6 +92,7 @@ namespace HRAndApplicantSystem.Forms
                     (j.CompanyName?.ToString() ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     (j.JobDescription?.ToString() ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                 );
+                System.Diagnostics.Debug.WriteLine($"ApplyFilters: After search filter = {filtered.Count} jobs");
             }
 
             PopulateDataGridView(filtered);
@@ -77,22 +100,64 @@ namespace HRAndApplicantSystem.Forms
 
         private void PopulateDataGridView(List<dynamic> jobs)
         {
-            jobsDataGridView.DataSource = null;
-            jobsDataGridView.DataSource = jobs;
+            System.Diagnostics.Debug.WriteLine($"PopulateDataGridView: Binding {jobs?.Count ?? 0} jobs");
+            
+            try
+            {
+                if (jobsDataGridView == null)
+                {
+                    System.Diagnostics.Debug.WriteLine("PopulateDataGridView: jobsDataGridView is null!");
+                    return;
+                }
 
-            // Auto-size columns
-            jobsDataGridView.AutoResizeColumns();
-            jobsDataGridView.AutoResizeRows();
+                if (jobs == null || jobs.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("PopulateDataGridView: No jobs to display");
+                    jobsDataGridView.DataSource = null;
+                    statusLabel.Text = "No jobs available";
+                    return;
+                }
+                
+                // Bind data directly - works better with anonymous types
+                jobsDataGridView.DataSource = jobs;
+                System.Diagnostics.Debug.WriteLine($"PopulateDataGridView: DataGridView bound, rows: {jobsDataGridView.RowCount}, columns: {jobsDataGridView.Columns.Count}");
+                
+                // Log column information
+                foreach (DataGridViewColumn col in jobsDataGridView.Columns)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  Column: {col.Name} ({col.HeaderText})");
+                }
+                
+                // Log first row data for verification
+                if (jobsDataGridView.RowCount > 0)
+                {
+                    System.Diagnostics.Debug.WriteLine($"First row cell count: {jobsDataGridView.Rows[0].Cells.Count}");
+                    for (int i = 0; i < jobsDataGridView.Rows[0].Cells.Count && i < 5; i++)
+                    {
+                        var cellValue = jobsDataGridView.Rows[0].Cells[i].Value;
+                        System.Diagnostics.Debug.WriteLine($"  Cell[{i}]: {cellValue}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PopulateDataGridView Exception: {ex}");
+                MessageBox.Show($"Error displaying jobs: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void UpdateStatusLabel()
         {
             statusLabel.Text = $"Total Active Jobs: {_allJobs?.Count ?? 0}";
+            System.Diagnostics.Debug.WriteLine($"UpdateStatusLabel: {statusLabel.Text}");
         }
 
         private void SearchTextBox_TextChanged(object sender, EventArgs e)
         {
-            ApplyFilters();
+            if (_allJobs != null && jobsDataGridView != null)
+            {
+                ApplyFilters();
+            }
         }
 
         private void ViewDetailsButton_Click(object sender, EventArgs e)

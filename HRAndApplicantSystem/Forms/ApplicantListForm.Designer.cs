@@ -17,5 +17,9 @@ namespace HRAndApplicantSystem.Forms
         {
             components = new System.ComponentModel.Container();
         }
+
+        private Panel searchPanel;
+        private Label searchLabel;
+        private Panel buttonPanel;
     }
 }

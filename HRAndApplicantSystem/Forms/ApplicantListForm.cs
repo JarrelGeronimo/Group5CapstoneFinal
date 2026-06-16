@@ -171,128 +171,183 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeComponent()
         {
-            this.SuspendLayout();
-
-            // DataGridView
             applicantsDataGridView = new DataGridView();
-            applicantsDataGridView.Dock = DockStyle.Fill;
-            applicantsDataGridView.BackgroundColor = System.Drawing.Color.White;
-            applicantsDataGridView.Location = new System.Drawing.Point(0, 80);
-            applicantsDataGridView.Name = "applicantsDataGridView";
-            applicantsDataGridView.Size = new System.Drawing.Size(1200, 570);
-            applicantsDataGridView.TabIndex = 2;
-            this.Controls.Add(applicantsDataGridView);
-
-            // Search Panel
-            Panel searchPanel = new Panel();
-            searchPanel.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            searchPanel.Dock = DockStyle.Top;
-            searchPanel.Height = 80;
-            searchPanel.Padding = new Padding(10);
-            searchPanel.BorderStyle = BorderStyle.FixedSingle;
-
-            // Search Label
-            Label searchLabel = new Label();
-            searchLabel.AutoSize = true;
-            searchLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            searchLabel.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
-            searchLabel.Location = new System.Drawing.Point(10, 10);
-            searchLabel.Text = "Search Applicants:";
-            searchPanel.Controls.Add(searchLabel);
-
-            // Search TextBox
+            this.searchPanel = new Panel();
+            this.searchLabel = new Label();
             searchTextBox = new TextBox();
-            searchTextBox.Font = new System.Drawing.Font("Segoe UI", 10F);
-            searchTextBox.Location = new System.Drawing.Point(10, 32);
-            searchTextBox.Width = 300;
-            searchTextBox.Height = 28;
-            searchTextBox.BorderStyle = BorderStyle.FixedSingle;
-            searchTextBox.TextChanged += SearchTextBox_TextChanged;
-            searchPanel.Controls.Add(searchTextBox);
-
-            // Buttons Panel
-            Panel buttonPanel = new Panel();
-            buttonPanel.Location = new System.Drawing.Point(320, 32);
-            buttonPanel.Size = new System.Drawing.Size(450, 35);
-            buttonPanel.AutoSize = true;
-
-            // Add Button
+            this.buttonPanel = new Panel();
             addButton = new Button();
-            addButton.Text = "Add New";
-            addButton.Size = new System.Drawing.Size(80, 30);
-            addButton.Location = new System.Drawing.Point(0, 0);
-            addButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
-            addButton.ForeColor = System.Drawing.Color.White;
-            addButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            addButton.Click += AddButton_Click;
-            buttonPanel.Controls.Add(addButton);
-
-            // Edit Button
             editButton = new Button();
-            editButton.Text = "Edit";
-            editButton.Size = new System.Drawing.Size(70, 30);
-            editButton.Location = new System.Drawing.Point(85, 0);
-            editButton.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
-            editButton.ForeColor = System.Drawing.Color.White;
-            editButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            editButton.Click += EditButton_Click;
-            buttonPanel.Controls.Add(editButton);
-
-            // Delete Button
             deleteButton = new Button();
-            deleteButton.Text = "Delete";
-            deleteButton.Size = new System.Drawing.Size(70, 30);
-            deleteButton.Location = new System.Drawing.Point(160, 0);
-            deleteButton.BackColor = System.Drawing.Color.FromArgb(220, 20, 60);
-            deleteButton.ForeColor = System.Drawing.Color.White;
-            deleteButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            deleteButton.Click += DeleteButton_Click;
-            buttonPanel.Controls.Add(deleteButton);
-
-            // Refresh Button
             refreshButton = new Button();
-            refreshButton.Text = "Refresh";
-            refreshButton.Size = new System.Drawing.Size(70, 30);
-            refreshButton.Location = new System.Drawing.Point(235, 0);
-            refreshButton.BackColor = System.Drawing.Color.FromArgb(107, 142, 35);
-            refreshButton.ForeColor = System.Drawing.Color.White;
-            refreshButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            refreshButton.Click += RefreshButton_Click;
-            buttonPanel.Controls.Add(refreshButton);
-
-            // Close Button
             closeButton = new Button();
-            closeButton.Text = "Close";
-            closeButton.Size = new System.Drawing.Size(70, 30);
-            closeButton.Location = new System.Drawing.Point(310, 0);
-            closeButton.BackColor = System.Drawing.Color.FromArgb(128, 128, 128);
-            closeButton.ForeColor = System.Drawing.Color.White;
-            closeButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            closeButton.Click += CloseButton_Click;
-            buttonPanel.Controls.Add(closeButton);
-
-            searchPanel.Controls.Add(buttonPanel);
-
-            // Status Label
             statusLabel = new Label();
+            ((System.ComponentModel.ISupportInitialize)applicantsDataGridView).BeginInit();
+            this.searchPanel.SuspendLayout();
+            this.buttonPanel.SuspendLayout();
+            SuspendLayout();
+            // 
+            // applicantsDataGridView
+            // 
+            applicantsDataGridView.BackgroundColor = Color.White;
+            applicantsDataGridView.ColumnHeadersHeight = 29;
+            applicantsDataGridView.Dock = DockStyle.Fill;
+            applicantsDataGridView.Location = new Point(0, 106);
+            applicantsDataGridView.Margin = new Padding(3, 4, 3, 4);
+            applicantsDataGridView.Name = "applicantsDataGridView";
+            applicantsDataGridView.RowHeadersWidth = 51;
+            applicantsDataGridView.Size = new Size(1349, 827);
+            applicantsDataGridView.TabIndex = 2;
+            // 
+            // searchPanel
+            // 
+            this.searchPanel.BackColor = Color.FromArgb(240, 240, 240);
+            this.searchPanel.BorderStyle = BorderStyle.FixedSingle;
+            this.searchPanel.Controls.Add(this.searchLabel);
+            this.searchPanel.Controls.Add(searchTextBox);
+            this.searchPanel.Controls.Add(this.buttonPanel);
+            this.searchPanel.Controls.Add(statusLabel);
+            this.searchPanel.Dock = DockStyle.Top;
+            this.searchPanel.Location = new Point(0, 0);
+            this.searchPanel.Margin = new Padding(3, 4, 3, 4);
+            this.searchPanel.Name = "searchPanel";
+            this.searchPanel.Padding = new Padding(11, 13, 11, 13);
+            this.searchPanel.Size = new Size(1349, 106);
+            this.searchPanel.TabIndex = 3;
+            // 
+            // searchLabel
+            // 
+            this.searchLabel.AutoSize = true;
+            this.searchLabel.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            this.searchLabel.ForeColor = Color.FromArgb(0, 51, 102);
+            this.searchLabel.Location = new Point(11, 13);
+            this.searchLabel.Name = "searchLabel";
+            this.searchLabel.Size = new Size(158, 23);
+            this.searchLabel.TabIndex = 0;
+            this.searchLabel.Text = "Search Applicants:";
+            // 
+            // searchTextBox
+            // 
+            searchTextBox.BorderStyle = BorderStyle.FixedSingle;
+            searchTextBox.Font = new Font("Segoe UI", 10F);
+            searchTextBox.Location = new Point(11, 43);
+            searchTextBox.Margin = new Padding(3, 4, 3, 4);
+            searchTextBox.Name = "searchTextBox";
+            searchTextBox.Size = new Size(343, 30);
+            searchTextBox.TabIndex = 1;
+            searchTextBox.TextChanged += SearchTextBox_TextChanged;
+            // 
+            // buttonPanel
+            // 
+            this.buttonPanel.AutoSize = true;
+            this.buttonPanel.Controls.Add(addButton);
+            this.buttonPanel.Controls.Add(editButton);
+            this.buttonPanel.Controls.Add(deleteButton);
+            this.buttonPanel.Controls.Add(refreshButton);
+            this.buttonPanel.Controls.Add(closeButton);
+            this.buttonPanel.Location = new Point(366, 43);
+            this.buttonPanel.Margin = new Padding(3, 4, 3, 4);
+            this.buttonPanel.Name = "buttonPanel";
+            this.buttonPanel.Size = new Size(514, 47);
+            this.buttonPanel.TabIndex = 2;
+            // 
+            // addButton
+            // 
+            addButton.BackColor = Color.FromArgb(34, 139, 34);
+            addButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            addButton.ForeColor = Color.White;
+            addButton.Location = new Point(0, 0);
+            addButton.Margin = new Padding(3, 4, 3, 4);
+            addButton.Name = "addButton";
+            addButton.Size = new Size(91, 40);
+            addButton.TabIndex = 0;
+            addButton.Text = "Add New";
+            addButton.UseVisualStyleBackColor = false;
+            addButton.Click += AddButton_Click;
+            // 
+            // editButton
+            // 
+            editButton.BackColor = Color.FromArgb(0, 120, 215);
+            editButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            editButton.ForeColor = Color.White;
+            editButton.Location = new Point(97, 0);
+            editButton.Margin = new Padding(3, 4, 3, 4);
+            editButton.Name = "editButton";
+            editButton.Size = new Size(80, 40);
+            editButton.TabIndex = 1;
+            editButton.Text = "Edit";
+            editButton.UseVisualStyleBackColor = false;
+            editButton.Click += EditButton_Click;
+            // 
+            // deleteButton
+            // 
+            deleteButton.BackColor = Color.FromArgb(220, 20, 60);
+            deleteButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            deleteButton.ForeColor = Color.White;
+            deleteButton.Location = new Point(183, 0);
+            deleteButton.Margin = new Padding(3, 4, 3, 4);
+            deleteButton.Name = "deleteButton";
+            deleteButton.Size = new Size(80, 40);
+            deleteButton.TabIndex = 2;
+            deleteButton.Text = "Delete";
+            deleteButton.UseVisualStyleBackColor = false;
+            deleteButton.Click += DeleteButton_Click;
+            // 
+            // refreshButton
+            // 
+            refreshButton.BackColor = Color.FromArgb(107, 142, 35);
+            refreshButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            refreshButton.ForeColor = Color.White;
+            refreshButton.Location = new Point(269, 0);
+            refreshButton.Margin = new Padding(3, 4, 3, 4);
+            refreshButton.Name = "refreshButton";
+            refreshButton.Size = new Size(80, 40);
+            refreshButton.TabIndex = 3;
+            refreshButton.Text = "Refresh";
+            refreshButton.UseVisualStyleBackColor = false;
+            refreshButton.Click += RefreshButton_Click;
+            // 
+            // closeButton
+            // 
+            closeButton.BackColor = Color.FromArgb(128, 128, 128);
+            closeButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            closeButton.ForeColor = Color.White;
+            closeButton.Location = new Point(354, 0);
+            closeButton.Margin = new Padding(3, 4, 3, 4);
+            closeButton.Name = "closeButton";
+            closeButton.Size = new Size(80, 40);
+            closeButton.TabIndex = 4;
+            closeButton.Text = "Close";
+            closeButton.UseVisualStyleBackColor = false;
+            closeButton.Click += CloseButton_Click;
+            // 
+            // statusLabel
+            // 
             statusLabel.AutoSize = true;
-            statusLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);
-            statusLabel.Location = new System.Drawing.Point(10, 58);
+            statusLabel.Font = new Font("Segoe UI", 9F);
+            statusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+            statusLabel.Location = new Point(11, 77);
+            statusLabel.Name = "statusLabel";
+            statusLabel.Size = new Size(72, 20);
+            statusLabel.TabIndex = 3;
             statusLabel.Text = "Loading...";
-            searchPanel.Controls.Add(statusLabel);
-
-            this.Controls.Add(searchPanel);
-
-            // Form
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(1200, 700);
-            this.Name = "ApplicantListForm";
-            this.Load += new System.EventHandler(this.ApplicantListForm_Load);
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            // 
+            // ApplicantListForm
+            // 
+            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.White;
+            ClientSize = new Size(1349, 933);
+            Controls.Add(applicantsDataGridView);
+            Controls.Add(this.searchPanel);
+            Margin = new Padding(3, 4, 3, 4);
+            Name = "ApplicantListForm";
+            Load += ApplicantListForm_Load;
+            ((System.ComponentModel.ISupportInitialize)applicantsDataGridView).EndInit();
+            this.searchPanel.ResumeLayout(false);
+            this.searchPanel.PerformLayout();
+            this.buttonPanel.ResumeLayout(false);
+            ResumeLayout(false);
         }
     }
 }

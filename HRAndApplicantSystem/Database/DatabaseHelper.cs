@@ -595,7 +595,8 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "SELECT [JobID], [JobTitle], [JobDetail] as JobDescription, [Status] FROM [JobVacancies] WHERE [Status] = 'Active' ORDER BY [JobID] DESC";
+                    // Query for jobs with Open or Active status (jobs that applicants can apply for)
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] WHERE [Status] IN ('Active', 'Open') ORDER BY [JobID] DESC";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
@@ -603,20 +604,24 @@ namespace HRAndApplicantSystem.Database
                         {
                             while (reader.Read())
                             {
-                                dynamic job = new System.Dynamic.ExpandoObject();
-                                var jobDict = (IDictionary<string, object>)job;
-                                jobDict["JobID"] = Convert.ToInt32(reader["JobID"]);
-                                jobDict["JobTitle"] = reader["JobTitle"]?.ToString() ?? "";
-                                jobDict["JobDescription"] = reader["JobDescription"]?.ToString() ?? "";
-                                jobDict["Status"] = reader["Status"]?.ToString() ?? "";
+                                dynamic job = new
+                                {
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? "",
+                                    JobDescription = reader["JobDetail"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? ""
+                                };
                                 jobs.Add(job);
+                                System.Diagnostics.Debug.WriteLine($"GetActiveJobsAsDynamic: Found job - ID={job.JobID}, Title={job.JobTitle}, Status={job.Status}");
                             }
                         }
                     }
                 }
+                System.Diagnostics.Debug.WriteLine($"GetActiveJobsAsDynamic: Total jobs retrieved: {jobs.Count}");
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"Error retrieving active jobs: {ex.Message}");
                 Console.WriteLine($"Error retrieving active jobs: {ex.Message}");
             }
 

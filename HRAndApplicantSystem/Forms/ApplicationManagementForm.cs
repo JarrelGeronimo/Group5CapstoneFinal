@@ -28,6 +28,10 @@ namespace HRAndApplicantSystem.Forms
         private Button viewDocumentsButton;
         private Button changeStatusButton;
         private Button refreshButton;
+        private Panel filterPanel;
+        private Label titleLabel;
+        private Label searchLabel;
+        private Panel buttonPanel;
         private Button closeButton;
 
         public ApplicationManagementForm(DatabaseHelper db, int userRoleID = 0, string initialStatusFilter = "All Statuses")
@@ -292,138 +296,195 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeComponent()
         {
-            this.SuspendLayout();
-
-            // DataGridView
             applicationsDataGridView = new DataGridView();
-            applicationsDataGridView.Dock = DockStyle.Fill;
-            applicationsDataGridView.BackgroundColor = System.Drawing.Color.White;
-            applicationsDataGridView.Location = new System.Drawing.Point(0, 120);
-            applicationsDataGridView.Name = "applicationsDataGridView";
-            applicationsDataGridView.Size = new System.Drawing.Size(1400, 550);
-            applicationsDataGridView.TabIndex = 2;
-            this.Controls.Add(applicationsDataGridView);
-
-            // Filter Panel
-            Panel filterPanel = new Panel();
-            filterPanel.BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
-            filterPanel.Dock = DockStyle.Top;
-            filterPanel.Height = 120;
-            filterPanel.Padding = new Padding(10);
-            filterPanel.BorderStyle = BorderStyle.FixedSingle;
-
-            // Title Label
-            Label titleLabel = new Label();
-            titleLabel.Text = "Job Applications - HR Review";
-            titleLabel.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            titleLabel.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
-            titleLabel.Location = new System.Drawing.Point(10, 10);
-            titleLabel.AutoSize = true;
-            filterPanel.Controls.Add(titleLabel);
-
-            // Search Label (no status filter anymore)
-            Label searchLabel = new Label();
-            searchLabel.Text = "Search:";
-            searchLabel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            searchLabel.Location = new System.Drawing.Point(10, 40);
-            searchLabel.AutoSize = true;
-            filterPanel.Controls.Add(searchLabel);
-
-            // Search TextBox
+            filterPanel = new Panel();
+            titleLabel = new Label();
+            searchLabel = new Label();
             searchTextBox = new TextBox();
-            searchTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
-            searchTextBox.Location = new System.Drawing.Point(60, 37);
-            searchTextBox.Width = 400;
-            searchTextBox.Height = 28;
-            searchTextBox.BorderStyle = BorderStyle.FixedSingle;
-            searchTextBox.TextChanged += SearchTextBox_TextChanged;
-            filterPanel.Controls.Add(searchTextBox);
-
-            // Buttons Row 2
-            Panel buttonPanel = new Panel();
-            buttonPanel.Location = new System.Drawing.Point(10, 65);
-            buttonPanel.Size = new System.Drawing.Size(1000, 40);
-            buttonPanel.AutoSize = true;
-
-            // View Applicant Button
+            buttonPanel = new Panel();
             viewApplicantButton = new Button();
-            viewApplicantButton.Text = "View Applicant";
-            viewApplicantButton.Size = new System.Drawing.Size(100, 30);
-            viewApplicantButton.Location = new System.Drawing.Point(0, 0);
-            viewApplicantButton.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
-            viewApplicantButton.ForeColor = System.Drawing.Color.White;
-            viewApplicantButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            viewApplicantButton.Click += ViewApplicantButton_Click;
-            buttonPanel.Controls.Add(viewApplicantButton);
-
-            // View Documents Button
             viewDocumentsButton = new Button();
-            viewDocumentsButton.Text = "View Documents";
-            viewDocumentsButton.Size = new System.Drawing.Size(110, 30);
-            viewDocumentsButton.Location = new System.Drawing.Point(105, 0);
-            viewDocumentsButton.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
-            viewDocumentsButton.ForeColor = System.Drawing.Color.White;
-            viewDocumentsButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            viewDocumentsButton.Click += ViewDocumentsButton_Click;
-            buttonPanel.Controls.Add(viewDocumentsButton);
-
-            // Change Status Button
             changeStatusButton = new Button();
-            changeStatusButton.Text = "Change Status";
-            changeStatusButton.Size = new System.Drawing.Size(110, 30);
-            changeStatusButton.Location = new System.Drawing.Point(220, 0);
-            changeStatusButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
-            changeStatusButton.ForeColor = System.Drawing.Color.White;
-            changeStatusButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            changeStatusButton.Click += ChangeStatusButton_Click;
-            buttonPanel.Controls.Add(changeStatusButton);
-
-
-
-            // Refresh Button
             refreshButton = new Button();
-            refreshButton.Text = "Refresh";
-            refreshButton.Size = new System.Drawing.Size(80, 30);
-            refreshButton.Location = new System.Drawing.Point(335, 0);
-            refreshButton.BackColor = System.Drawing.Color.FromArgb(107, 142, 35);
-            refreshButton.ForeColor = System.Drawing.Color.White;
-            refreshButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            refreshButton.Click += RefreshButton_Click;
-            buttonPanel.Controls.Add(refreshButton);
-
-            // Close Button
             closeButton = new Button();
-            closeButton.Text = "Close";
-            closeButton.Size = new System.Drawing.Size(80, 30);
-            closeButton.Location = new System.Drawing.Point(420, 0);
-            closeButton.BackColor = System.Drawing.Color.FromArgb(128, 128, 128);
-            closeButton.ForeColor = System.Drawing.Color.White;
-            closeButton.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            closeButton.Click += CloseButton_Click;
-            buttonPanel.Controls.Add(closeButton);
-
-            filterPanel.Controls.Add(buttonPanel);
-
-            // Status Label (info)
             statusLabel = new Label();
-            statusLabel.AutoSize = true;
-            statusLabel.Font = new System.Drawing.Font("Segoe UI", 9F);
-            statusLabel.ForeColor = System.Drawing.Color.FromArgb(100, 100, 100);
-            statusLabel.Location = new System.Drawing.Point(10, 105);
-            statusLabel.Text = "Loading...";
+            ((System.ComponentModel.ISupportInitialize)applicationsDataGridView).BeginInit();
+            filterPanel.SuspendLayout();
+            buttonPanel.SuspendLayout();
+            SuspendLayout();
+            // 
+            // applicationsDataGridView
+            // 
+            applicationsDataGridView.BackgroundColor = Color.White;
+            applicationsDataGridView.ColumnHeadersHeight = 29;
+            applicationsDataGridView.Dock = DockStyle.Fill;
+            applicationsDataGridView.Location = new Point(0, 159);
+            applicationsDataGridView.Margin = new Padding(3, 4, 3, 4);
+            applicationsDataGridView.Name = "applicationsDataGridView";
+            applicationsDataGridView.RowHeadersWidth = 51;
+            applicationsDataGridView.Size = new Size(1600, 774);
+            applicationsDataGridView.TabIndex = 2;
+            // 
+            // filterPanel
+            // 
+            filterPanel.BackColor = Color.FromArgb(240, 240, 240);
+            filterPanel.BorderStyle = BorderStyle.FixedSingle;
+            filterPanel.Controls.Add(titleLabel);
+            filterPanel.Controls.Add(searchLabel);
+            filterPanel.Controls.Add(searchTextBox);
+            filterPanel.Controls.Add(buttonPanel);
             filterPanel.Controls.Add(statusLabel);
-
-            this.Controls.Add(filterPanel);
-
-            // Form
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(1400, 700);
-            this.Name = "ApplicationManagementForm";
-            this.Load += new System.EventHandler(this.ApplicationManagementForm_Load);
-            this.ResumeLayout(false);
-            this.PerformLayout();
+            filterPanel.Dock = DockStyle.Top;
+            filterPanel.Location = new Point(0, 0);
+            filterPanel.Margin = new Padding(3, 4, 3, 4);
+            filterPanel.Name = "filterPanel";
+            filterPanel.Padding = new Padding(11, 13, 11, 13);
+            filterPanel.Size = new Size(1600, 159);
+            filterPanel.TabIndex = 3;
+            // 
+            // titleLabel
+            // 
+            titleLabel.AutoSize = true;
+            titleLabel.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            titleLabel.ForeColor = Color.FromArgb(0, 51, 102);
+            titleLabel.Location = new Point(11, 13);
+            titleLabel.Name = "titleLabel";
+            titleLabel.Size = new Size(291, 28);
+            titleLabel.TabIndex = 0;
+            titleLabel.Text = "Job Applications - HR Review";
+            // 
+            // searchLabel
+            // 
+            searchLabel.AutoSize = true;
+            searchLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            searchLabel.Location = new Point(11, 53);
+            searchLabel.Name = "searchLabel";
+            searchLabel.Size = new Size(59, 20);
+            searchLabel.TabIndex = 1;
+            searchLabel.Text = "Search:";
+            // 
+            // searchTextBox
+            // 
+            searchTextBox.BorderStyle = BorderStyle.FixedSingle;
+            searchTextBox.Font = new Font("Segoe UI", 9F);
+            searchTextBox.Location = new Point(69, 49);
+            searchTextBox.Margin = new Padding(3, 4, 3, 4);
+            searchTextBox.Name = "searchTextBox";
+            searchTextBox.Size = new Size(457, 27);
+            searchTextBox.TabIndex = 2;
+            searchTextBox.TextChanged += SearchTextBox_TextChanged;
+            // 
+            // buttonPanel
+            // 
+            buttonPanel.AutoSize = true;
+            buttonPanel.Controls.Add(viewApplicantButton);
+            buttonPanel.Controls.Add(viewDocumentsButton);
+            buttonPanel.Controls.Add(changeStatusButton);
+            buttonPanel.Controls.Add(refreshButton);
+            buttonPanel.Controls.Add(closeButton);
+            buttonPanel.Location = new Point(11, 87);
+            buttonPanel.Margin = new Padding(3, 4, 3, 4);
+            buttonPanel.Name = "buttonPanel";
+            buttonPanel.Size = new Size(1143, 53);
+            buttonPanel.TabIndex = 3;
+            // 
+            // viewApplicantButton
+            // 
+            viewApplicantButton.BackColor = Color.FromArgb(0, 120, 215);
+            viewApplicantButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            viewApplicantButton.ForeColor = Color.White;
+            viewApplicantButton.Location = new Point(0, 0);
+            viewApplicantButton.Margin = new Padding(3, 4, 3, 4);
+            viewApplicantButton.Name = "viewApplicantButton";
+            viewApplicantButton.Size = new Size(114, 40);
+            viewApplicantButton.TabIndex = 0;
+            viewApplicantButton.Text = "View Applicant";
+            viewApplicantButton.UseVisualStyleBackColor = false;
+            viewApplicantButton.Click += ViewApplicantButton_Click;
+            // 
+            // viewDocumentsButton
+            // 
+            viewDocumentsButton.BackColor = Color.FromArgb(0, 120, 215);
+            viewDocumentsButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            viewDocumentsButton.ForeColor = Color.White;
+            viewDocumentsButton.Location = new Point(120, 0);
+            viewDocumentsButton.Margin = new Padding(3, 4, 3, 4);
+            viewDocumentsButton.Name = "viewDocumentsButton";
+            viewDocumentsButton.Size = new Size(126, 40);
+            viewDocumentsButton.TabIndex = 1;
+            viewDocumentsButton.Text = "View Documents";
+            viewDocumentsButton.UseVisualStyleBackColor = false;
+            viewDocumentsButton.Click += ViewDocumentsButton_Click;
+            // 
+            // changeStatusButton
+            // 
+            changeStatusButton.BackColor = Color.FromArgb(34, 139, 34);
+            changeStatusButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            changeStatusButton.ForeColor = Color.White;
+            changeStatusButton.Location = new Point(251, 0);
+            changeStatusButton.Margin = new Padding(3, 4, 3, 4);
+            changeStatusButton.Name = "changeStatusButton";
+            changeStatusButton.Size = new Size(126, 40);
+            changeStatusButton.TabIndex = 2;
+            changeStatusButton.Text = "Change Status";
+            changeStatusButton.UseVisualStyleBackColor = false;
+            changeStatusButton.Click += ChangeStatusButton_Click;
+            // 
+            // refreshButton
+            // 
+            refreshButton.BackColor = Color.FromArgb(107, 142, 35);
+            refreshButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            refreshButton.ForeColor = Color.White;
+            refreshButton.Location = new Point(383, 0);
+            refreshButton.Margin = new Padding(3, 4, 3, 4);
+            refreshButton.Name = "refreshButton";
+            refreshButton.Size = new Size(91, 40);
+            refreshButton.TabIndex = 3;
+            refreshButton.Text = "Refresh";
+            refreshButton.UseVisualStyleBackColor = false;
+            refreshButton.Click += RefreshButton_Click;
+            // 
+            // closeButton
+            // 
+            closeButton.BackColor = Color.FromArgb(128, 128, 128);
+            closeButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            closeButton.ForeColor = Color.White;
+            closeButton.Location = new Point(489, 0);
+            closeButton.Margin = new Padding(3, 4, 3, 4);
+            closeButton.Name = "closeButton";
+            closeButton.Size = new Size(91, 40);
+            closeButton.TabIndex = 4;
+            closeButton.Text = "Close";
+            closeButton.UseVisualStyleBackColor = false;
+            closeButton.Click += CloseButton_Click;
+            // 
+            // statusLabel
+            // 
+            statusLabel.AutoSize = true;
+            statusLabel.Font = new Font("Segoe UI", 9F);
+            statusLabel.ForeColor = Color.FromArgb(100, 100, 100);
+            statusLabel.Location = new Point(11, 140);
+            statusLabel.Name = "statusLabel";
+            statusLabel.Size = new Size(72, 20);
+            statusLabel.TabIndex = 4;
+            statusLabel.Text = "Loading...";
+            // 
+            // ApplicationManagementForm
+            // 
+            AutoScaleDimensions = new SizeF(8F, 20F);
+            AutoScaleMode = AutoScaleMode.Font;
+            BackColor = Color.White;
+            ClientSize = new Size(1600, 933);
+            Controls.Add(applicationsDataGridView);
+            Controls.Add(filterPanel);
+            Margin = new Padding(3, 4, 3, 4);
+            Name = "ApplicationManagementForm";
+            Load += ApplicationManagementForm_Load;
+            ((System.ComponentModel.ISupportInitialize)applicationsDataGridView).EndInit();
+            filterPanel.ResumeLayout(false);
+            filterPanel.PerformLayout();
+            buttonPanel.ResumeLayout(false);
+            ResumeLayout(false);
         }
     }
 }

@@ -260,7 +260,25 @@ namespace HRAndApplicantSystem.Forms
 
         private void OpenJobVacanciesForm()
         {
-            MessageBox.Show("Job vacancies view coming soon", "Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                // Get applicant ID from current username
+                var applicant = _db.GetApplicantByUsername(_username);
+                
+                if (applicant == null)
+                {
+                    MessageBox.Show("Error: Could not retrieve applicant profile. Please contact support.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
+                // Open Job Vacancies Form with applicant ID
+                JobVacanciesForm form = new JobVacanciesForm(_db, applicant.ApplicantID);
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening job vacancies: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void OpenApplicationsForm()
