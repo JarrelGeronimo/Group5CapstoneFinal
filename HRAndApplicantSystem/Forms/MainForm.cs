@@ -40,6 +40,16 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
+                // For applicants, check if profile is complete
+                if (_currentUser.RoleID == (int)UserRole.Applicant)
+                {
+                    if (NeedsProfileCompletion())
+                    {
+                        ShowApplicantProfileForm();
+                        return; // Don't load dashboard until profile is complete
+                    }
+                }
+
                 // Load user welcome message
                 LoadUserInfo();
                 
@@ -52,6 +62,62 @@ namespace HRAndApplicantSystem.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Error loading dashboard: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private bool NeedsProfileCompletion()
+        {
+            try
+            {
+                Applicant applicant = _db.GetApplicantByUsername(_username);
+                
+                // If no profile exists, needs completion
+                if (applicant == null)
+                {
+                    return true;
+                }
+
+                // If profile exists but key fields are empty, needs completion
+                if (string.IsNullOrWhiteSpace(applicant.FirstName) ||
+                    string.IsNullOrWhiteSpace(applicant.LastName) ||
+                    string.IsNullOrWhiteSpace(applicant.ContactNo) ||
+                    string.IsNullOrWhiteSpace(applicant.Address))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NeedsProfileCompletion error: {ex.Message}");
+                return false;
+            }
+        }
+
+        private void ShowApplicantProfileForm()
+        {
+            try
+            {
+                ApplicantProfileForm profileForm = new ApplicantProfileForm(_db, _username);
+                if (profileForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Profile completed successfully, now load dashboard
+                    LoadUserInfo();
+                    InitializeMenus();
+                    LoadDashboardForRole();
+                }
+                else
+                {
+                    // Profile not completed, close the application
+                    MessageBox.Show("You must complete your profile to access the system.", "Profile Required", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading profile form: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Close();
             }
         }
 
@@ -173,22 +239,35 @@ namespace HRAndApplicantSystem.Forms
             reviewAppsButton.Click += (s, e) => OpenApplicationsFormFiltered("Pending");
             contentPanel.Controls.Add(reviewAppsButton);
 
-            // Workflow Stage 2: Conduct Interviews
-            Button interviewsButton = new Button();
-            interviewsButton.Text = "2. Conduct\nInterviews";
-            interviewsButton.Size = new System.Drawing.Size(300, 100);
-            interviewsButton.BackColor = System.Drawing.Color.FromArgb(70, 130, 180);
-            interviewsButton.ForeColor = System.Drawing.Color.White;
-            interviewsButton.Font = new Font("Arial", 11, FontStyle.Bold);
-            interviewsButton.Cursor = Cursors.Hand;
-            interviewsButton.Margin = new Padding(10);
-            interviewsButton.FlatStyle = FlatStyle.Flat;
-            interviewsButton.Click += (s, e) => OpenApplicationsFormFiltered("Screening");
-            contentPanel.Controls.Add(interviewsButton);
+            // Workflow Stage 2a: Schedule Interviews (Screening Status)
+            Button screeningButton = new Button();
+            screeningButton.Text = "2. Schedule\nInterviews";
+            screeningButton.Size = new System.Drawing.Size(300, 100);
+            screeningButton.BackColor = System.Drawing.Color.FromArgb(70, 130, 180);
+            screeningButton.ForeColor = System.Drawing.Color.White;
+            screeningButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            screeningButton.Cursor = Cursors.Hand;
+            screeningButton.Margin = new Padding(10);
+            screeningButton.FlatStyle = FlatStyle.Flat;
+            screeningButton.Click += (s, e) => OpenApplicationsFormFiltered("Screening");
+            contentPanel.Controls.Add(screeningButton);
+
+            // Workflow Stage 2b: Evaluate Interviews (Interview Status)
+            Button evaluateButton = new Button();
+            evaluateButton.Text = "3. Evaluate\nInterviews";
+            evaluateButton.Size = new System.Drawing.Size(300, 100);
+            evaluateButton.BackColor = System.Drawing.Color.FromArgb(70, 130, 180);
+            evaluateButton.ForeColor = System.Drawing.Color.White;
+            evaluateButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            evaluateButton.Cursor = Cursors.Hand;
+            evaluateButton.Margin = new Padding(10);
+            evaluateButton.FlatStyle = FlatStyle.Flat;
+            evaluateButton.Click += (s, e) => OpenApplicationsFormFiltered("Interview");
+            contentPanel.Controls.Add(evaluateButton);
 
             // Workflow Stage 3: Make Hiring Decisions (Manager/Admin Only)
             Button hiringButton = new Button();
-            hiringButton.Text = "3. Make Hiring\nDecisions";
+            hiringButton.Text = "4. Make Hiring\nDecisions";
             hiringButton.Size = new System.Drawing.Size(300, 100);
             hiringButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
             hiringButton.ForeColor = System.Drawing.Color.White;
@@ -200,7 +279,7 @@ namespace HRAndApplicantSystem.Forms
             // Enable only for Manager (3) or Admin (4)
             if (_currentUser.RoleID == 3 || _currentUser.RoleID == 4)
             {
-                hiringButton.Click += (s, e) => OpenApplicationsFormFiltered("Interview");
+                hiringButton.Click += (s, e) => OpenApplicationsFormFiltered("For Final Review");
             }
             else
             {

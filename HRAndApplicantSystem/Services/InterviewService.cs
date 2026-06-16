@@ -11,7 +11,7 @@ namespace HRAndApplicantSystem.Services
         private readonly IApplicationRepository applicationRepository;
         private readonly DatabaseHelper db;
 
-        public InterviewService(IInterviewRepository interRepo = null, IApplicationRepository appRepo = null)
+        public InterviewService(IInterviewRepository? interRepo = null, IApplicationRepository? appRepo = null)
         {
             interviewRepository = interRepo ?? new InterviewRepository(new DatabaseHelper());
             applicationRepository = appRepo ?? new ApplicationRepository(new DatabaseHelper());
@@ -203,7 +203,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     EVALUATE INTERVIEW                       ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var forInterview = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
+            var forInterview = db.GetApplicationsByStatus("Interview");
 
             if (forInterview.Count == 0)
             {
@@ -317,7 +317,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     CANCEL INTERVIEW                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
+            var scheduled = db.GetApplicationsByStatus("Interview");
 
             if (scheduled.Count == 0)
             {
@@ -393,7 +393,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     RESCHEDULE INTERVIEW                     ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
+            var scheduled = db.GetApplicationsByStatus("Interview");
 
             if (scheduled.Count == 0)
             {

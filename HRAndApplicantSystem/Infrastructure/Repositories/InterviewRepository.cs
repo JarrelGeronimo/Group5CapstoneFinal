@@ -9,7 +9,7 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
     {
         private readonly DatabaseHelper db;
 
-        public InterviewRepository(DatabaseHelper databaseHelper = null)
+        public InterviewRepository(DatabaseHelper? databaseHelper = null)
         {
             db = databaseHelper ?? new DatabaseHelper();
         }

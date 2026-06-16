@@ -9,12 +9,15 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly int _applicationID;
-        private string _interviewDecision; // "Interview" or "Rejected"
+        private string? _interviewDecision; // "For Final Review" or "Rejected"
+        private TextBox? interviewNotesTextBox;
+        private Button? approveButton;
+        private Button? rejectButton;
+        private Button? cancelButton;
+        private Label? errorLabel;
 
-        public string InterviewDecision => _interviewDecision;
-        public string InterviewNotes => interviewNotesTextBox.Text.Trim();
-        public DateTime InterviewDate => interviewDatePicker.Value;
-        public string InterviewTime => interviewTimeTextBox.Text.Trim();
+        public string InterviewDecision => _interviewDecision ?? "";
+        public string InterviewNotes => interviewNotesTextBox?.Text.Trim() ?? "";
 
         public InterviewDialog(DatabaseHelper db, int applicationID)
         {
@@ -27,15 +30,15 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeDialog()
         {
-            this.Text = "Interview Scheduling - Stage 2";
-            this.Size = new System.Drawing.Size(600, 550);
+            this.Text = "Interview Evaluation - Stage 2";
+            this.Size = new System.Drawing.Size(600, 450);
             this.StartPosition = FormStartPosition.CenterParent;
             this.MaximizeBox = false;
             this.MinimizeBox = false;
 
             // Title
             Label titleLabel = new Label();
-            titleLabel.Text = "STAGE 2: Interview Scheduling & Assessment";
+            titleLabel.Text = "STAGE 2: INTERVIEW EVALUATION";
             titleLabel.Font = new System.Drawing.Font("Arial", 12, System.Drawing.FontStyle.Bold);
             titleLabel.ForeColor = System.Drawing.Color.FromArgb(0, 51, 102);
             titleLabel.Location = new System.Drawing.Point(20, 15);
@@ -44,53 +47,25 @@ namespace HRAndApplicantSystem.Forms
 
             // Description
             Label descriptionLabel = new Label();
-            descriptionLabel.Text = "Schedule an interview or mark the applicant as not suitable. After interview, record if they passed or failed.";
+            descriptionLabel.Text = "Evaluate the interview. Approve to move to Final Review or reject the applicant.";
             descriptionLabel.Font = new System.Drawing.Font("Arial", 9);
             descriptionLabel.Location = new System.Drawing.Point(20, 45);
             descriptionLabel.Size = new System.Drawing.Size(550, 30);
             descriptionLabel.AutoSize = false;
             this.Controls.Add(descriptionLabel);
 
-            // Interview Date Label
-            Label dateLabel = new Label();
-            dateLabel.Text = "Interview Date:";
-            dateLabel.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            dateLabel.Location = new System.Drawing.Point(20, 85);
-            dateLabel.Size = new System.Drawing.Size(150, 20);
-            this.Controls.Add(dateLabel);
-
-            // Interview Date Picker
-            interviewDatePicker.Location = new System.Drawing.Point(20, 110);
-            interviewDatePicker.Size = new System.Drawing.Size(200, 25);
-            interviewDatePicker.Format = DateTimePickerFormat.Short;
-            this.Controls.Add(interviewDatePicker);
-
-            // Interview Time Label
-            Label timeLabel = new Label();
-            timeLabel.Text = "Interview Time (HH:MM):";
-            timeLabel.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            timeLabel.Location = new System.Drawing.Point(240, 85);
-            timeLabel.Size = new System.Drawing.Size(200, 20);
-            this.Controls.Add(timeLabel);
-
-            // Interview Time TextBox
-            interviewTimeTextBox.Location = new System.Drawing.Point(240, 110);
-            interviewTimeTextBox.Size = new System.Drawing.Size(100, 25);
-            interviewTimeTextBox.Font = new System.Drawing.Font("Arial", 9);
-            interviewTimeTextBox.Text = "14:30"; // Default time format example
-            this.Controls.Add(interviewTimeTextBox);
-
             // Interview Notes Label
             Label notesLabel = new Label();
-            notesLabel.Text = "Interview Notes (Required):";
+            notesLabel.Text = "Interview Feedback (Required):";
             notesLabel.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            notesLabel.Location = new System.Drawing.Point(20, 150);
+            notesLabel.Location = new System.Drawing.Point(20, 85);
             notesLabel.Size = new System.Drawing.Size(300, 20);
             this.Controls.Add(notesLabel);
 
             // Interview Notes TextBox
-            interviewNotesTextBox.Location = new System.Drawing.Point(20, 175);
-            interviewNotesTextBox.Size = new System.Drawing.Size(550, 120);
+            interviewNotesTextBox = new TextBox();
+            interviewNotesTextBox.Location = new System.Drawing.Point(20, 110);
+            interviewNotesTextBox.Size = new System.Drawing.Size(550, 200);
             interviewNotesTextBox.Multiline = true;
             interviewNotesTextBox.ScrollBars = ScrollBars.Vertical;
             interviewNotesTextBox.Font = new System.Drawing.Font("Arial", 9);
@@ -98,37 +73,40 @@ namespace HRAndApplicantSystem.Forms
 
             // Decision Label
             Label decisionLabel = new Label();
-            decisionLabel.Text = "Interview Outcome:";
+            decisionLabel.Text = "Decision:";
             decisionLabel.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            decisionLabel.Location = new System.Drawing.Point(20, 305);
+            decisionLabel.Location = new System.Drawing.Point(20, 320);
             decisionLabel.Size = new System.Drawing.Size(300, 20);
             this.Controls.Add(decisionLabel);
 
-            // Passed Button
-            passedButton.Text = "✓ Applicant Passed";
-            passedButton.Location = new System.Drawing.Point(20, 335);
-            passedButton.Size = new System.Drawing.Size(200, 50);
-            passedButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
-            passedButton.ForeColor = System.Drawing.Color.White;
-            passedButton.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            passedButton.FlatStyle = FlatStyle.Flat;
-            passedButton.Click += PassedButton_Click;
-            this.Controls.Add(passedButton);
+            // Approve Button
+            approveButton = new Button();
+            approveButton.Text = "✓ Approve for Final Review";
+            approveButton.Location = new System.Drawing.Point(20, 350);
+            approveButton.Size = new System.Drawing.Size(200, 50);
+            approveButton.BackColor = System.Drawing.Color.FromArgb(34, 139, 34);
+            approveButton.ForeColor = System.Drawing.Color.White;
+            approveButton.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
+            approveButton.FlatStyle = FlatStyle.Flat;
+            approveButton.Click += ApproveButton_Click;
+            this.Controls.Add(approveButton);
 
-            // Failed Button
-            failedButton.Text = "✗ Applicant Failed";
-            failedButton.Location = new System.Drawing.Point(230, 335);
-            failedButton.Size = new System.Drawing.Size(200, 50);
-            failedButton.BackColor = System.Drawing.Color.FromArgb(220, 20, 60);
-            failedButton.ForeColor = System.Drawing.Color.White;
-            failedButton.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
-            failedButton.FlatStyle = FlatStyle.Flat;
-            failedButton.Click += FailedButton_Click;
-            this.Controls.Add(failedButton);
+            // Reject Button
+            rejectButton = new Button();
+            rejectButton.Text = "✗ Reject";
+            rejectButton.Location = new System.Drawing.Point(230, 350);
+            rejectButton.Size = new System.Drawing.Size(150, 50);
+            rejectButton.BackColor = System.Drawing.Color.FromArgb(220, 20, 60);
+            rejectButton.ForeColor = System.Drawing.Color.White;
+            rejectButton.Font = new System.Drawing.Font("Arial", 10, System.Drawing.FontStyle.Bold);
+            rejectButton.FlatStyle = FlatStyle.Flat;
+            rejectButton.Click += RejectButton_Click;
+            this.Controls.Add(rejectButton);
 
             // Cancel Button
+            cancelButton = new Button();
             cancelButton.Text = "Cancel";
-            cancelButton.Location = new System.Drawing.Point(440, 335);
+            cancelButton.Location = new System.Drawing.Point(390, 350);
             cancelButton.Size = new System.Drawing.Size(130, 50);
             cancelButton.BackColor = System.Drawing.Color.FromArgb(128, 128, 128);
             cancelButton.ForeColor = System.Drawing.Color.White;
@@ -138,63 +116,51 @@ namespace HRAndApplicantSystem.Forms
             this.Controls.Add(cancelButton);
 
             // Error Label
+            errorLabel = new Label();
             errorLabel.Text = "";
             errorLabel.ForeColor = System.Drawing.Color.FromArgb(220, 20, 60);
-            errorLabel.Location = new System.Drawing.Point(20, 395);
-            errorLabel.Size = new System.Drawing.Size(550, 40);
+            errorLabel.Location = new System.Drawing.Point(20, 405);
+            errorLabel.Size = new System.Drawing.Size(550, 30);
             errorLabel.Font = new System.Drawing.Font("Arial", 9);
             errorLabel.AutoSize = false;
             this.Controls.Add(errorLabel);
         }
 
-        private void PassedButton_Click(object sender, EventArgs e)
+        private void ApproveButton_Click(object? sender, EventArgs? e)
         {
             if (!ValidateInput())
                 return;
 
-            _interviewDecision = "Interview";
-            SaveInterview();
+            _interviewDecision = "For Final Review";
+            SaveEvaluation();
         }
 
-        private void FailedButton_Click(object sender, EventArgs e)
+        private void RejectButton_Click(object? sender, EventArgs? e)
         {
             if (!ValidateInput())
                 return;
 
             _interviewDecision = "Rejected";
-            SaveInterview();
+            SaveEvaluation();
         }
 
         private bool ValidateInput()
         {
-            if (string.IsNullOrWhiteSpace(interviewNotesTextBox.Text))
+            if (string.IsNullOrWhiteSpace(interviewNotesTextBox?.Text))
             {
-                ShowError("Interview notes are required");
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(interviewTimeTextBox.Text))
-            {
-                ShowError("Interview time is required (HH:MM format)");
-                return false;
-            }
-
-            // Basic time validation
-            if (!System.Text.RegularExpressions.Regex.IsMatch(interviewTimeTextBox.Text, @"^\d{1,2}:\d{2}$"))
-            {
-                ShowError("Invalid time format. Use HH:MM (e.g., 14:30)");
+                ShowError("Interview feedback is required");
                 return false;
             }
 
             return true;
         }
 
-        private void SaveInterview()
+        private void SaveEvaluation()
         {
             try
             {
-                string remarks = $"Interview (Stage 2) - Date: {InterviewDate:yyyy-MM-dd} {InterviewTime}. Outcome: {_interviewDecision}. Notes: {InterviewNotes}";
-                bool success = _db.UpdateApplicationStatus(_applicationID, _interviewDecision, remarks, "HR Interview");
+                string remarks = $"Interview Evaluation (Stage 2) - Outcome: {_interviewDecision}. Feedback: {InterviewNotes}";
+                bool success = _db.UpdateApplicationStatus(_applicationID, _interviewDecision ?? "", remarks, "HR Interview");
 
                 if (success)
                 {
@@ -203,27 +169,23 @@ namespace HRAndApplicantSystem.Forms
                 }
                 else
                 {
-                    ShowError("Failed to save interview details. Please try again.");
+                    ShowError("Failed to save evaluation. Please try again.");
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[InterviewDialog] Error: {ex.Message}");
                 ShowError($"Error: {ex.Message}");
             }
         }
 
         private void ShowError(string message)
         {
-            errorLabel.Text = message;
-            errorLabel.ForeColor = System.Drawing.Color.FromArgb(220, 20, 60);
+            if (errorLabel != null)
+            {
+                errorLabel.Text = message;
+                errorLabel.ForeColor = System.Drawing.Color.FromArgb(220, 20, 60);
+            }
         }
-
-        private DateTimePicker interviewDatePicker = new DateTimePicker();
-        private TextBox interviewTimeTextBox = new TextBox();
-        private TextBox interviewNotesTextBox = new TextBox();
-        private Button passedButton = new Button();
-        private Button failedButton = new Button();
-        private Button cancelButton = new Button();
-        private Label errorLabel = new Label();
     }
 }

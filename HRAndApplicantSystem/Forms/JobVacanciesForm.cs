@@ -180,11 +180,15 @@ namespace HRAndApplicantSystem.Forms
 
         private void ApplyButton_Click(object sender, EventArgs e)
         {
+            System.Diagnostics.Debug.WriteLine("ApplyButton_Click: Called");
+            
             if (jobsDataGridView.SelectedRows.Count > 0)
             {
                 var row = jobsDataGridView.SelectedRows[0];
                 int jobID = Convert.ToInt32(row.Cells["JobID"]?.Value ?? 0);
                 string jobTitle = row.Cells["JobTitle"]?.Value?.ToString() ?? "";
+                
+                System.Diagnostics.Debug.WriteLine($"ApplyButton_Click: Selected job - ID={jobID}, Title={jobTitle}, ApplicantID={_applicantID}");
 
                 try
                 {
@@ -196,8 +200,10 @@ namespace HRAndApplicantSystem.Forms
                     }
 
                     // Open ApplicationDraftForm
+                    System.Diagnostics.Debug.WriteLine($"ApplyButton_Click: Creating ApplicationDraftForm");
                     using (ApplicationDraftForm form = new ApplicationDraftForm(_db, _applicantID, jobID, jobTitle))
                     {
+                        System.Diagnostics.Debug.WriteLine($"ApplyButton_Click: Showing ApplicationDraftForm");
                         if (form.ShowDialog(this) == DialogResult.OK)
                         {
                             MessageBox.Show("Application submitted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -207,7 +213,8 @@ namespace HRAndApplicantSystem.Forms
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    System.Diagnostics.Debug.WriteLine($"ApplyButton_Click Exception: {ex}");
+                    MessageBox.Show($"Error: {ex.Message}\n\n{ex.StackTrace}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else

@@ -742,12 +742,15 @@ namespace HRAndApplicantSystem.Database
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] Called with applicantID={applicantID}, jobID={jobID}");
+                
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
                     conn.Open();
+                    System.Diagnostics.Debug.WriteLine("[SubmitJobApplication] Connection opened");
 
-                    // Check if applicant has already applied for this job
-                    string checkQuery = "SELECT COUNT(*) FROM [Applications] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID";
+                    // Check if applicant has already submitted (not draft) for this job
+                    string checkQuery = "SELECT COUNT(*) FROM [Applications] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [Status] <> 'Draft'";
 
                     using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
                     {
@@ -760,17 +763,45 @@ namespace HRAndApplicantSystem.Database
                         checkCmd.Parameters.Add(jobParam);
 
                         int count = Convert.ToInt32(checkCmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] Already submitted count: {count}");
                         if (count > 0)
                         {
+                            System.Diagnostics.Debug.WriteLine("[SubmitJobApplication] Applicant already has a submitted application for this job");
                             Console.WriteLine("You have already applied for this job.");
                             return false;
                         }
                     }
 
-                    // Insert new application
-                    string query = "INSERT INTO [Applications] ([ApplicantID], [JobID], [Status], [DateApplied]) VALUES (@applicantID, @jobID, @status, @dateApplied)";
+                    // First, try to UPDATE existing draft application to "Submitted"
+                    string updateQuery = "UPDATE [Applications] SET [Status] = @status WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [Status] = 'Draft'";
 
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
+                    {
+                        OleDbParameter statusParam = new OleDbParameter("@status", OleDbType.VarWChar);
+                        statusParam.Value = "Submitted";
+                        updateCmd.Parameters.Add(statusParam);
+
+                        OleDbParameter applicantParam = new OleDbParameter("@applicantID", OleDbType.Integer);
+                        applicantParam.Value = applicantID;
+                        updateCmd.Parameters.Add(applicantParam);
+
+                        OleDbParameter jobParam = new OleDbParameter("@jobID", OleDbType.Integer);
+                        jobParam.Value = jobID;
+                        updateCmd.Parameters.Add(jobParam);
+
+                        int rowsAffected = updateCmd.ExecuteNonQuery();
+                        System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] UPDATE draft rows affected: {rowsAffected}");
+                        if (rowsAffected > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine("[SubmitJobApplication] Successfully updated draft to Submitted");
+                            return true; // Draft was updated to Submitted
+                        }
+                    }
+
+                    // If no draft existed, insert new application with "Submitted" status
+                    string insertQuery = "INSERT INTO [Applications] ([ApplicantID], [JobID], [Status], [DateApplied]) VALUES (@applicantID, @jobID, @status, @dateApplied)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(insertQuery, conn))
                     {
                         OleDbParameter applicantInsertParam = new OleDbParameter("@applicantID", OleDbType.Integer);
                         applicantInsertParam.Value = applicantID;
@@ -789,12 +820,23 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.Add(dateParam);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
-                        return rowsAffected > 0;
+                        System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] INSERT rows affected: {rowsAffected}");
+                        if (rowsAffected > 0)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] Successfully inserted new application with status 'Submitted'");
+                            return true;
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[SubmitJobApplication] INSERT failed - no rows affected");
+                            return false;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[SubmitJobApplication] EXCEPTION: {ex.Message}\n{ex.StackTrace}");
                 Console.WriteLine($"Error submitting application: {ex.Message}");
                 return false;
             }
@@ -1479,7 +1521,9 @@ namespace HRAndApplicantSystem.Database
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
                     conn.Open();
+                    System.Diagnostics.Debug.WriteLine("[GetAllApplications] Database connection opened");
 
+                    // Try INNER JOIN first (original query)
                     string query = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
                                            [Applications].[Status], [Applications].[DateApplied], [Applicants].[First Name],
                                            [Applicants].[Last Name], [JobVacancies].[JobTitle]
@@ -1488,10 +1532,27 @@ namespace HRAndApplicantSystem.Database
                                     WHERE [Applications].[Status] <> 'Draft'
                                     ORDER BY [Applications].[DateApplied] DESC";
 
+                    System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Executing INNER JOIN query");
+
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
+                        // First, let's check how many applications exist in total
+                        using (OleDbCommand countCmd = new OleDbCommand("SELECT COUNT(*) FROM [Applications]", conn))
+                        {
+                            int totalApps = Convert.ToInt32(countCmd.ExecuteScalar());
+                            System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Total applications in database: {totalApps}");
+                        }
+
+                        // Check non-draft applications
+                        using (OleDbCommand countCmd = new OleDbCommand("SELECT COUNT(*) FROM [Applications] WHERE [Status] <> 'Draft'", conn))
+                        {
+                            int nonDraftApps = Convert.ToInt32(countCmd.ExecuteScalar());
+                            System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Non-draft applications in database: {nonDraftApps}");
+                        }
+
                         using (OleDbDataReader reader = cmd.ExecuteReader())
                         {
+                            int rowCount = 0;
                             while (reader.Read())
                             {
                                 dynamic app = new
@@ -1505,7 +1566,57 @@ namespace HRAndApplicantSystem.Database
                                     LastName = reader[6]?.ToString() ?? "",
                                     JobTitle = reader[7]?.ToString() ?? ""
                                 };
+                                System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Row {rowCount}: AppID={app.ApplicationID}, Applicant={app.FirstName} {app.LastName}, JobID={app.JobID}, Status={app.Status}");
                                 applications.Add(app);
+                                rowCount++;
+                            }
+                            System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Total rows retrieved from INNER JOIN query: {rowCount}");
+                        }
+                    }
+                    
+                    // If INNER JOIN returned no results, try LEFT JOINs to diagnose the issue
+                    if (applications.Count == 0)
+                    {
+                        System.Diagnostics.Debug.WriteLine("[GetAllApplications] WARNING: INNER JOIN returned 0 results. Trying alternative LEFT JOIN query...");
+                        
+                        string altQuery = @"SELECT [Applications].[ApplicationID], [Applications].[ApplicantID], [Applications].[JobID],
+                                                   [Applications].[Status], [Applications].[DateApplied], 
+                                                   ISNULL([Applicants].[First Name], 'N/A') AS [First Name],
+                                                   ISNULL([Applicants].[Last Name], 'N/A') AS [Last Name], 
+                                                   ISNULL([JobVacancies].[JobTitle], 'N/A') AS [JobTitle]
+                                            FROM ([Applications] LEFT JOIN [Applicants] ON [Applications].[ApplicantID] = [Applicants].[ApplicantID])
+                                            LEFT JOIN [JobVacancies] ON [Applications].[JobID] = [JobVacancies].[JobID]
+                                            WHERE [Applications].[Status] <> 'Draft'
+                                            ORDER BY [Applications].[DateApplied] DESC";
+                        
+                        using (OleDbCommand cmd = new OleDbCommand(altQuery, conn))
+                        {
+                            using (OleDbDataReader reader = cmd.ExecuteReader())
+                            {
+                                int rowCount = 0;
+                                while (reader.Read())
+                                {
+                                    dynamic app = new
+                                    {
+                                        ApplicationID = Convert.ToInt32(reader[0]),
+                                        ApplicantID = Convert.ToInt32(reader[1]),
+                                        JobID = Convert.ToInt32(reader[2]),
+                                        Status = reader[3]?.ToString() ?? "",
+                                        DateApplied = Convert.ToDateTime(reader[4]),
+                                        FirstName = reader[5]?.ToString() ?? "",
+                                        LastName = reader[6]?.ToString() ?? "",
+                                        JobTitle = reader[7]?.ToString() ?? ""
+                                    };
+                                    System.Diagnostics.Debug.WriteLine($"[GetAllApplications] LEFT JOIN Row {rowCount}: AppID={app.ApplicationID}, Applicant={app.FirstName} {app.LastName}, Status={app.Status}");
+                                    applications.Add(app);
+                                    rowCount++;
+                                }
+                                System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Total rows retrieved from LEFT JOIN query: {rowCount}");
+                                
+                                if (rowCount > 0)
+                                {
+                                    System.Diagnostics.Debug.WriteLine("[GetAllApplications] ALERT: LEFT JOIN returned records, but INNER JOIN did not. This indicates missing Applicant or JobVacancy records!");
+                                }
                             }
                         }
                     }
@@ -1513,10 +1624,134 @@ namespace HRAndApplicantSystem.Database
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[GetAllApplications] ERROR: {ex.Message}\n{ex.StackTrace}");
                 Console.WriteLine($"Error retrieving all applications: {ex.Message}");
             }
 
+            System.Diagnostics.Debug.WriteLine($"[GetAllApplications] Returning {applications.Count} applications");
             return applications;
+        }
+
+        // DEBUG METHOD: Check what data exists in the database
+        public void DebugDatabaseStatus()
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Check Applications table
+                    using (OleDbCommand cmd = new OleDbCommand("SELECT COUNT(*) FROM [Applications]", conn))
+                    {
+                        int totalApps = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Total applications: {totalApps}");
+                    }
+
+                    // Check each status
+                    foreach (string status in new[] { "Draft", "Pending", "Screening", "Interview", "Shortlisted", "Accepted", "Rejected", "Under Review", "Submitted" })
+                    {
+                        using (OleDbCommand cmd = new OleDbCommand($"SELECT COUNT(*) FROM [Applications] WHERE [Status] = @status", conn))
+                        {
+                            cmd.Parameters.AddWithValue("@status", status);
+                            int count = Convert.ToInt32(cmd.ExecuteScalar());
+                            if (count > 0)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Applications with status '{status}': {count}");
+                            }
+                        }
+                    }
+
+                    // Check non-draft applications
+                    using (OleDbCommand cmd = new OleDbCommand("SELECT COUNT(*) FROM [Applications] WHERE [Status] <> 'Draft'", conn))
+                    {
+                        int nonDraftApps = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Non-draft applications: {nonDraftApps}");
+                    }
+
+                    // List all applications with their details
+                    using (OleDbCommand cmd = new OleDbCommand(@"SELECT [ApplicationID], [ApplicantID], [JobID], [Status], [DateApplied] FROM [Applications] ORDER BY [DateApplied] DESC", conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            System.Diagnostics.Debug.WriteLine("[DebugDatabaseStatus] All applications:");
+                            while (reader.Read())
+                            {
+                                int appId = Convert.ToInt32(reader[0]);
+                                int applicantId = Convert.ToInt32(reader[1]);
+                                int jobId = Convert.ToInt32(reader[2]);
+                                string status = reader[3]?.ToString() ?? "";
+                                DateTime dateApplied = Convert.ToDateTime(reader[4]);
+                                System.Diagnostics.Debug.WriteLine($"  AppID={appId}, ApplicantID={applicantId}, JobID={jobId}, Status='{status}', DateApplied={dateApplied}");
+                            }
+                        }
+                    }
+
+                    // Check Applicants table
+                    using (OleDbCommand cmd = new OleDbCommand("SELECT COUNT(*) FROM [Applicants]", conn))
+                    {
+                        int totalApplicants = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Total applicants: {totalApplicants}");
+                    }
+
+                    // Check JobVacancies table
+                    using (OleDbCommand cmd = new OleDbCommand("SELECT COUNT(*) FROM [JobVacancies]", conn))
+                    {
+                        int totalJobs = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Total job vacancies: {totalJobs}");
+                    }
+
+                    // Diagnostic: Check join health
+                    System.Diagnostics.Debug.WriteLine("[DebugDatabaseStatus] Checking JOIN health...");
+                    
+                    // Count applications with matching applicants
+                    using (OleDbCommand cmd = new OleDbCommand(@"SELECT COUNT(*) FROM [Applications] 
+                                                                  WHERE [ApplicantID] IN (SELECT [ApplicantID] FROM [Applicants])", conn))
+                    {
+                        int appsWithApplicants = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Applications with matching Applicants: {appsWithApplicants}");
+                    }
+                    
+                    // Count applications with matching jobs
+                    using (OleDbCommand cmd = new OleDbCommand(@"SELECT COUNT(*) FROM [Applications] 
+                                                                  WHERE [JobID] IN (SELECT [JobID] FROM [JobVacancies])", conn))
+                    {
+                        int appsWithJobs = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Applications with matching JobVacancies: {appsWithJobs}");
+                    }
+                    
+                    // Count applications with both
+                    using (OleDbCommand cmd = new OleDbCommand(@"SELECT COUNT(*) FROM [Applications] 
+                                                                  WHERE [ApplicantID] IN (SELECT [ApplicantID] FROM [Applicants])
+                                                                  AND [JobID] IN (SELECT [JobID] FROM [JobVacancies])", conn))
+                    {
+                        int appsWithBoth = Convert.ToInt32(cmd.ExecuteScalar());
+                        System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] Applications with BOTH matching records: {appsWithBoth}");
+                    }
+                    
+                    // Show any applications with missing applicant or job
+                    using (OleDbCommand cmd = new OleDbCommand(@"SELECT [ApplicationID], [ApplicantID], [JobID] FROM [Applications] 
+                                                                  WHERE [ApplicantID] NOT IN (SELECT [ApplicantID] FROM [Applicants])
+                                                                  OR [JobID] NOT IN (SELECT [JobID] FROM [JobVacancies])", conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.HasRows)
+                            {
+                                System.Diagnostics.Debug.WriteLine("[DebugDatabaseStatus] WARNING: Applications with missing related records:");
+                                while (reader.Read())
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"  AppID={reader[0]}, ApplicantID={reader[1]}, JobID={reader[2]}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[DebugDatabaseStatus] ERROR: {ex.Message}");
+            }
         }
 
         public List<dynamic> GetApplicationsByJob(int jobID)

@@ -20,19 +20,19 @@ namespace HRAndApplicantSystem.Forms
         private readonly DatabaseHelper _db;
         private readonly int _userRoleID;
         private string _defaultStatusFilter = "All Statuses"; // Default filter
-        private List<dynamic> _allApplications;
-        private DataGridView applicationsDataGridView;
-        private TextBox searchTextBox;
-        private Label statusLabel;
-        private Button viewApplicantButton;
-        private Button viewDocumentsButton;
-        private Button changeStatusButton;
-        private Button refreshButton;
-        private Panel filterPanel;
-        private Label titleLabel;
-        private Label searchLabel;
-        private Panel buttonPanel;
-        private Button closeButton;
+        private List<dynamic>? _allApplications;
+        private DataGridView? applicationsDataGridView;
+        private TextBox? searchTextBox;
+        private Label? statusLabel;
+        private Button? viewApplicantButton;
+        private Button? viewDocumentsButton;
+        private Button? changeStatusButton;
+        private Button? refreshButton;
+        private Panel? filterPanel;
+        private Label? titleLabel;
+        private Label? searchLabel;
+        private Panel? buttonPanel;
+        private Button? closeButton;
 
         public ApplicationManagementForm(DatabaseHelper db, int userRoleID = 0, string initialStatusFilter = "All Statuses")
         {
@@ -45,20 +45,27 @@ namespace HRAndApplicantSystem.Forms
             this.Size = new System.Drawing.Size(1400, 700);
         }
 
-        private void ApplicationManagementForm_Load(object sender, EventArgs e)
+        private void ApplicationManagementForm_Load(object? sender, EventArgs? e)
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"[ApplicationManagementForm_Load] Starting, defaultStatusFilter={_defaultStatusFilter}");
+                
+                // Debug: Check what's in the database
+                _db.DebugDatabaseStatus();
+                
                 LoadApplications();
                 
                 // Apply the initial status filter if one was specified
                 if (_defaultStatusFilter != "All Statuses")
                 {
+                    System.Diagnostics.Debug.WriteLine($"[ApplicationManagementForm_Load] Applying filter for status: {_defaultStatusFilter}");
                     ApplyAllFilters();
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"[ApplicationManagementForm_Load] Exception: {ex.Message}\n{ex.StackTrace}");
                 MessageBox.Show($"Error loading applications: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -69,33 +76,101 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("[LoadApplications] Getting all applications from database");
+                // Debug: Check database status first
+                _db.DebugDatabaseStatus();
+                
                 // Get all applications from database
                 _allApplications = _db.GetAllApplications();
                 
-                // Populate DataGridView
-                PopulateDataGridView(_allApplications);
+                System.Diagnostics.Debug.WriteLine($"[LoadApplications] Retrieved {_allApplications?.Count ?? 0} applications");
                 
-                statusLabel.Text = $"Total Applications: {_allApplications.Count}";
+                if (_allApplications == null || _allApplications.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("[LoadApplications] WARNING: No applications retrieved from database!");
+                    statusLabel!.Text = "No applications found in database";
+                    return;
+                }
+                
+                // Log the statuses of retrieved applications
+                var statusCounts = _allApplications
+                    .GroupBy(a => a.Status?.ToString() ?? "unknown")
+                    .ToDictionary(g => g.Key, g => g.Count());
+                    
+                System.Diagnostics.Debug.WriteLine("[LoadApplications] Applications by status:");
+                foreach (var kvp in statusCounts)
+                {
+                    System.Diagnostics.Debug.WriteLine($"  {kvp.Key}: {kvp.Value}");
+                }
+                
+                // Populate DataGridView - only populate grid if showing all statuses
+                if (_defaultStatusFilter == "All Statuses")
+                {
+                    PopulateDataGridView(_allApplications ?? new List<dynamic>());
+                    statusLabel!.Text = $"All Applications: {_allApplications?.Count ?? 0} total";
+                }
+                else
+                {
+                    // For filtered views, don't populate yet - ApplyAllFilters will do it
+                    System.Diagnostics.Debug.WriteLine($"[LoadApplications] Skipping initial population - will apply filter '{_defaultStatusFilter}'");
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"[LoadApplications] LoadApplications completed");
             }
             catch (Exception ex)
             {
-                statusLabel.Text = $"Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"[LoadApplications] Exception: {ex.Message}\n{ex.StackTrace}");
+                statusLabel!.Text = $"Error: {ex.Message}";
                 _allApplications = new List<dynamic>();
             }
         }
 
         private void PopulateDataGridView(List<dynamic> applications)
         {
-            applicationsDataGridView.DataSource = applications;
+            System.Diagnostics.Debug.WriteLine($"[PopulateDataGridView] Called with {applications?.Count ?? 0} applications");
+            
+            // Clear existing columns
+            applicationsDataGridView!.Columns.Clear();
+            
+            // Create columns explicitly for the dynamic object properties
+            applicationsDataGridView.Columns.Add("ApplicationID", "Application ID");
+            applicationsDataGridView.Columns.Add("ApplicantID", "Applicant ID");
+            applicationsDataGridView.Columns.Add("JobID", "Job ID");
+            applicationsDataGridView.Columns.Add("FirstName", "First Name");
+            applicationsDataGridView.Columns.Add("LastName", "Last Name");
+            applicationsDataGridView.Columns.Add("JobTitle", "Job Title");
+            applicationsDataGridView.Columns.Add("Status", "Status");
+            applicationsDataGridView.Columns.Add("DateApplied", "Date Applied");
+            
+            // Populate rows
+            int rowCount = 0;
+            foreach (var app in applications ?? new List<dynamic>())
+            {
+                applicationsDataGridView.Rows.Add(
+                    app.ApplicationID,
+                    app.ApplicantID,
+                    app.JobID,
+                    app.FirstName,
+                    app.LastName,
+                    app.JobTitle,
+                    app.Status,
+                    app.DateApplied
+                );
+                System.Diagnostics.Debug.WriteLine($"[PopulateDataGridView] Added row: {app.FirstName} {app.LastName} - {app.JobTitle} (Status: {app.Status})");
+                rowCount++;
+            }
+            
+            // Configure grid appearance
             applicationsDataGridView.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             applicationsDataGridView.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             applicationsDataGridView.AllowUserToAddRows = false;
             applicationsDataGridView.AllowUserToDeleteRows = false;
             applicationsDataGridView.ReadOnly = true;
             applicationsDataGridView.CellDoubleClick += ApplicationsDataGridView_CellDoubleClick;
+            System.Diagnostics.Debug.WriteLine($"[PopulateDataGridView] DataGridView now has {applicationsDataGridView.Rows.Count} rows");
         }
 
-        private void ApplicationsDataGridView_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        private void ApplicationsDataGridView_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
@@ -112,29 +187,71 @@ namespace HRAndApplicantSystem.Forms
             ApplyAllFilters();
         }
 
-        private void SearchTextBox_TextChanged(object sender, EventArgs e)
+        private void SearchTextBox_TextChanged(object? sender, EventArgs? e)
         {
             ApplyAllFilters();
         }
 
         private void ApplyAllFilters()
         {
-            if (_allApplications == null) return;
+            System.Diagnostics.Debug.WriteLine("[ApplyAllFilters] Called");
+            if (_allApplications == null) 
+            {
+                System.Diagnostics.Debug.WriteLine("[ApplyAllFilters] _allApplications is null, returning");
+                return;
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Starting with {_allApplications.Count} total applications");
+            
+            // Log all statuses in the data
+            var statuses = _allApplications.Select(a => a.Status?.ToString() ?? "").Distinct().ToList();
+            System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Available statuses in data: {string.Join(", ", statuses)}");
 
             var filtered = _allApplications.AsEnumerable();
 
             // Filter by default status if one was specified during form initialization
             if (_defaultStatusFilter != "All Statuses")
             {
-                filtered = filtered.Where(a =>
-                    (a.Status?.ToString() ?? "").Equals(_defaultStatusFilter, StringComparison.OrdinalIgnoreCase)
-                );
+                System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Filtering by filter mode: '{_defaultStatusFilter}'");
+                int beforeCount = filtered.Count();
+                
+                // Handle special filter modes that include multiple statuses
+                if (_defaultStatusFilter.Equals("Pending", StringComparison.OrdinalIgnoreCase))
+                {
+                    // "Pending" mode shows both Submitted and Under Review applications
+                    filtered = filtered.Where(a =>
+                    {
+                        string appStatus = (a.Status?.ToString() ?? "").Trim();
+                        bool matches = appStatus.Equals("Submitted", StringComparison.OrdinalIgnoreCase) || 
+                                      appStatus.Equals("Under Review", StringComparison.OrdinalIgnoreCase);
+                        return matches;
+                    });
+                    System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Using 'Pending' mode - showing Submitted and Under Review applications");
+                }
+                else
+                {
+                    // Standard single-status filter
+                    filtered = filtered.Where(a =>
+                    {
+                        string appStatus = (a.Status?.ToString() ?? "").Trim();
+                        bool matches = appStatus.Equals(_defaultStatusFilter, StringComparison.OrdinalIgnoreCase);
+                        if (matches)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters]   MATCH: App status '{appStatus}' matches filter '{_defaultStatusFilter}'");
+                        }
+                        return matches;
+                    });
+                }
+                
+                int afterCount = filtered.Count();
+                System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] After status filter: {beforeCount} -> {afterCount} applications");
             }
 
             // Filter by search text (applicant name or job title)
-            string searchTerm = searchTextBox.Text.Trim();
+            string searchTerm = searchTextBox!.Text.Trim();
             if (!string.IsNullOrWhiteSpace(searchTerm))
             {
+                System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Filtering by search term: {searchTerm}");
                 filtered = filtered.Where(a =>
                     (a.FirstName?.ToString() ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
                     (a.LastName?.ToString() ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
@@ -143,13 +260,34 @@ namespace HRAndApplicantSystem.Forms
             }
 
             var filteredList = filtered.ToList();
+            System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Final result: {filteredList.Count} applications");
+            foreach (var app in filteredList.Take(5)) // Log first 5 for verification
+            {
+                System.Diagnostics.Debug.WriteLine($"  - {app.FirstName} {app.LastName}, Job: {app.JobTitle}, Status: {app.Status}");
+            }
+            
             PopulateDataGridView(filteredList);
-            statusLabel.Text = $"Filtered: {filteredList.Count} applications";
+            
+            // Update status label based on filter
+            string statusText;
+            if (_defaultStatusFilter == "Pending")
+            {
+                statusText = $"Pending Review (Submitted & Under Review): {filteredList.Count} applications";
+            }
+            else if (_defaultStatusFilter == "All Statuses")
+            {
+                statusText = $"All Applications: {filteredList.Count} applications";
+            }
+            else
+            {
+                statusText = $"Filter: {_defaultStatusFilter} - {filteredList.Count} applications";
+            }
+            statusLabel!.Text = statusText;
         }
 
         private void ViewApplicantProfile()
         {
-            if (applicationsDataGridView.SelectedRows.Count > 0)
+            if (applicationsDataGridView!.SelectedRows.Count > 0)
             {
                 try
                 {
@@ -174,7 +312,7 @@ namespace HRAndApplicantSystem.Forms
 
         private void ViewDocuments()
         {
-            if (applicationsDataGridView.SelectedRows.Count > 0)
+            if (applicationsDataGridView!.SelectedRows.Count > 0)
             {
                 try
                 {
@@ -198,13 +336,15 @@ namespace HRAndApplicantSystem.Forms
 
         private void ChangeStatus()
         {
-            if (applicationsDataGridView.SelectedRows.Count > 0)
+            if (applicationsDataGridView!.SelectedRows.Count > 0)
             {
                 try
                 {
                     var row = applicationsDataGridView.SelectedRows[0];
                     int applicationId = Convert.ToInt32(row.Cells["ApplicationID"]?.Value ?? 0);
                     string currentStatus = row.Cells["Status"]?.Value?.ToString() ?? "";
+                    
+                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Called for ApplicationID={applicationId}, CurrentStatus={currentStatus}");
 
                     // Route to appropriate dialog based on current status and user role
                     DialogResult result = DialogResult.Cancel;
@@ -212,36 +352,67 @@ namespace HRAndApplicantSystem.Forms
 
                     switch (currentStatus)
                     {
-                        case "Pending":
+                        case "Submitted":
+                        case "Under Review":
                             // Stage 1: Application Review (HR Staff, Manager, Admin can do)
+                            // Both "Submitted" (new) and "Under Review" (in progress) go to review dialog
+                            System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening ApplicationReviewDialog for review");
+                            
+                            // First, update status to "Under Review" to indicate HR is reviewing it
+                            if (currentStatus == "Submitted")
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Changing status from 'Submitted' to 'Under Review'");
+                                _db.UpdateApplicationStatus(applicationId, "Under Review", "HR started reviewing application", _userRoleID.ToString());
+                            }
+                            
                             using (ApplicationReviewDialog dialog = new ApplicationReviewDialog(_db, applicationId))
                             {
                                 result = dialog.ShowDialog(this);
                                 newStatus = dialog.ReviewDecision;
+                                System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Review dialog closed with decision: {newStatus}");
                             }
                             break;
 
                         case "Screening":
-                            // Stage 2: Interview (HR Staff, Manager, Admin can do)
-                            using (InterviewDialog dialog = new InterviewDialog(_db, applicationId))
+                            // Stage 2a: Schedule Interview (HR Staff, Manager, Admin can do)
+                            System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening InterviewSchedulingDialog for scheduling");
+                            using (InterviewSchedulingDialog dialog = new InterviewSchedulingDialog(_db, applicationId))
                             {
                                 result = dialog.ShowDialog(this);
-                                newStatus = dialog.InterviewDecision;
+                                if (result == DialogResult.OK)
+                                {
+                                    newStatus = "Interview";
+                                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Interview scheduled, status changed to Interview");
+                                }
                             }
                             break;
 
                         case "Interview":
-                            // Stage 3: Hiring Decision (Manager and Admin ONLY)
+                            // Stage 2b: Evaluate Interview (HR Staff, Manager, Admin can do)
+                            System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening InterviewDialog for evaluation");
+                            using (InterviewDialog dialog = new InterviewDialog(_db, applicationId))
+                            {
+                                result = dialog.ShowDialog(this);
+                                newStatus = dialog.InterviewDecision;
+                                System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Interview evaluation dialog closed with decision: {newStatus}");
+                            }
+                            break;
+
+                        case "For Final Review":
+                            // Final Review: Manager and Admin ONLY - Accept or Reject decision
                             if (_userRoleID == 3 || _userRoleID == 4) // HR_MANAGER or ADMIN
                             {
+                                System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening HiringDecisionDialog for final review");
                                 using (HiringDecisionDialog dialog = new HiringDecisionDialog(_db, applicationId))
                                 {
                                     result = dialog.ShowDialog(this);
                                     newStatus = dialog.HiringDecision;
+                                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Final review dialog closed with decision: {newStatus}");
                                 }
                             }
                             else
                             {
+                                System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Access denied for non-manager user (RoleID={_userRoleID})");
                                 MessageBox.Show("Only HR Manager or Admin can make final hiring decisions.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                                 return;
                             }
@@ -249,36 +420,45 @@ namespace HRAndApplicantSystem.Forms
 
                         case "Accepted":
                         case "Rejected":
+                            System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Application is finalized with status '{currentStatus}', cannot change");
                             MessageBox.Show("This application has already been finalized and cannot be changed.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                             return;
 
                         default:
+                            System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Unknown application status: '{currentStatus}'");
                             MessageBox.Show("Unknown application status.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             return;
                     }
 
                     if (result == DialogResult.OK)
                     {
+                        System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Dialog returned OK, refreshing applications");
                         MessageBox.Show($"Application status updated to: {newStatus}", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         LoadApplications(); // Refresh the grid
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Dialog was cancelled or closed without OK");
                     }
                 }
                 catch (Exception ex)
                 {
+                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Exception: {ex.Message}\n{ex.StackTrace}");
                     MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
             else
             {
+                System.Diagnostics.Debug.WriteLine("[ChangeStatus] No row selected in grid");
                 MessageBox.Show("Please select an application first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
 
 
-        private void RefreshButton_Click(object sender, EventArgs e)
+        private void RefreshButton_Click(object? sender, EventArgs? e)
         {
-            searchTextBox.Clear();
+            searchTextBox!.Clear();
 
             LoadApplications();
             
@@ -289,10 +469,10 @@ namespace HRAndApplicantSystem.Forms
             }
         }
 
-        private void ViewApplicantButton_Click(object sender, EventArgs e) => ViewApplicantProfile();
-        private void ViewDocumentsButton_Click(object sender, EventArgs e) => ViewDocuments();
-        private void ChangeStatusButton_Click(object sender, EventArgs e) => ChangeStatus();
-        private void CloseButton_Click(object sender, EventArgs e) => this.Close();
+        private void ViewApplicantButton_Click(object? sender, EventArgs? e) => ViewApplicantProfile();
+        private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
+        private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
+        private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
 
         private void InitializeComponent()
         {

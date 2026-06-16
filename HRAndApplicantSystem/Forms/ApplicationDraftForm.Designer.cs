@@ -15,15 +15,25 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeComponent()
         {
+            components = new System.ComponentModel.Container();
+            
             SuspendLayout();
+            
             // 
             // ApplicationDraftForm
             // 
+            AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
+            AutoScaleMode = AutoScaleMode.Font;
             AutoScroll = true;
-            BackColor = Color.FromArgb(240, 240, 240);
-            ClientSize = new Size(307, 253);
+            AutoScrollMinSize = new System.Drawing.Size(900, 800);
+            BackColor = System.Drawing.Color.FromArgb(240, 240, 240);
+            ClientSize = new System.Drawing.Size(900, 700);
             Name = "ApplicationDraftForm";
+            Text = "Apply for Job";
+            StartPosition = FormStartPosition.CenterParent;
+            
             ResumeLayout(false);
+            PerformLayout();
         }
     }
 }
