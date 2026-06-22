@@ -185,5 +185,32 @@ namespace HRAndApplicantSystem.Services
 
             System.Threading.Thread.Sleep(1500);
         }
+
+        /// <summary>
+        /// Public method to get all requirement types (for external use)
+        /// </summary>
+        public List<dynamic> GetAllRequirements()
+        {
+            return db.GetAllRequirementTypes();
+        }
+
+        /// <summary>
+        /// Public method to add a new requirement type (for external use)
+        /// </summary>
+        public bool AddRequirement(string requirementName)
+        {
+            if (string.IsNullOrWhiteSpace(requirementName))
+                return false;
+
+            return db.AddRequirementType(requirementName);
+        }
+
+        /// <summary>
+        /// Public method to remove a requirement type (for external use)
+        /// </summary>
+        public bool RemoveRequirement(int requirementTypeID)
+        {
+            return db.RemoveRequirementType(requirementTypeID);
+        }
     }
 }

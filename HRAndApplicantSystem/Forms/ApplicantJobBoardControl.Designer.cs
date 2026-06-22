@@ -28,168 +28,216 @@ namespace HRAndApplicantSystem.Forms
 
         private void InitializeComponent()
         {
-            this.pnlHeader = new System.Windows.Forms.Panel();
-            this.lblHeaderTitle = new System.Windows.Forms.Label();
-            this.splitContainer = new System.Windows.Forms.SplitContainer();
-            this.txtSearch = new System.Windows.Forms.TextBox();
-            this.btnSearch = new System.Windows.Forms.Button();
-            this.btnClearSearch = new System.Windows.Forms.Button();
-            this.dgvJobs = new System.Windows.Forms.DataGridView();
-            this.pnlDetails = new System.Windows.Forms.Panel();
-            this.lblJobTitle = new System.Windows.Forms.Label();
-            this.lblJobStatus = new System.Windows.Forms.Label();
-            this.lblDescHeader = new System.Windows.Forms.Label();
-            this.txtJobDescription = new System.Windows.Forms.TextBox();
-            this.btnApply = new System.Windows.Forms.Button();
-            
-            this.pnlHeader.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).BeginInit();
-            this.splitContainer.Panel1.SuspendLayout();
-            this.splitContainer.Panel2.SuspendLayout();
-            this.splitContainer.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.dgvJobs)).BeginInit();
-            this.pnlDetails.SuspendLayout();
-            this.SuspendLayout();
-            
+            pnlHeader = new Panel();
+            lblHeaderTitle = new Label();
+            splitContainer = new SplitContainer();
+            txtSearch = new TextBox();
+            btnSearch = new Button();
+            btnClearSearch = new Button();
+            dgvJobs = new DataGridView();
+            pnlDetails = new Panel();
+            btnApply = new Button();
+            txtJobDescription = new TextBox();
+            lblDescHeader = new Label();
+            lblJobStatus = new Label();
+            lblJobTitle = new Label();
+            pnlHeader.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)splitContainer).BeginInit();
+            splitContainer.Panel1.SuspendLayout();
+            splitContainer.Panel2.SuspendLayout();
+            splitContainer.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)dgvJobs).BeginInit();
+            pnlDetails.SuspendLayout();
+            SuspendLayout();
+            // 
             // pnlHeader
-            this.pnlHeader.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(248)))), ((int)(((byte)(249)))), ((int)(((byte)(250)))));
-            this.pnlHeader.Controls.Add(this.lblHeaderTitle);
-            this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlHeader.Location = new System.Drawing.Point(0, 0);
-            this.pnlHeader.Size = new System.Drawing.Size(950, 50);
-            
+            // 
+            pnlHeader.BackColor = Color.FromArgb(248, 249, 250);
+            pnlHeader.Controls.Add(lblHeaderTitle);
+            pnlHeader.Dock = DockStyle.Top;
+            pnlHeader.Location = new Point(0, 0);
+            pnlHeader.Name = "pnlHeader";
+            pnlHeader.Size = new Size(950, 50);
+            pnlHeader.TabIndex = 1;
+            // 
             // lblHeaderTitle
-            this.lblHeaderTitle.AutoSize = true;
-            this.lblHeaderTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblHeaderTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(37)))), ((int)(((byte)(41)))));
-            this.lblHeaderTitle.Location = new System.Drawing.Point(15, 12);
-            this.lblHeaderTitle.Text = "🔍 Explore Career Opportunities";
-
+            // 
+            lblHeaderTitle.AutoSize = true;
+            lblHeaderTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblHeaderTitle.ForeColor = Color.FromArgb(33, 37, 41);
+            lblHeaderTitle.Location = new Point(15, 12);
+            lblHeaderTitle.Name = "lblHeaderTitle";
+            lblHeaderTitle.Size = new Size(389, 32);
+            lblHeaderTitle.TabIndex = 0;
+            lblHeaderTitle.Text = "🔍 Explore Career Opportunities";
+            // 
             // splitContainer
-            this.splitContainer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.splitContainer.Location = new System.Drawing.Point(0, 50);
-            this.splitContainer.SplitterDistance = 550;
-            this.splitContainer.Size = new System.Drawing.Size(950, 550);
-
-            // Panel 1 (Kaliwa - Search & Table Grid)
-            this.splitContainer.Panel1.Controls.Add(this.txtSearch);
-            this.splitContainer.Panel1.Controls.Add(this.btnSearch);
-            this.splitContainer.Panel1.Controls.Add(this.btnClearSearch);
-            this.splitContainer.Panel1.Controls.Add(this.dgvJobs);
-            this.splitContainer.Panel1.Padding = new System.Windows.Forms.Padding(15);
-
+            // 
+            splitContainer.Dock = DockStyle.Fill;
+            splitContainer.Location = new Point(0, 50);
+            splitContainer.Name = "splitContainer";
+            // 
+            // splitContainer.Panel1
+            // 
+            splitContainer.Panel1.Controls.Add(txtSearch);
+            splitContainer.Panel1.Controls.Add(btnSearch);
+            splitContainer.Panel1.Controls.Add(btnClearSearch);
+            splitContainer.Panel1.Controls.Add(dgvJobs);
+            splitContainer.Panel1.Padding = new Padding(15);
+            // 
+            // splitContainer.Panel2
+            // 
+            splitContainer.Panel2.Controls.Add(pnlDetails);
+            splitContainer.Panel2.Padding = new Padding(15);
+            splitContainer.Size = new Size(950, 550);
+            splitContainer.SplitterDistance = 766;
+            splitContainer.TabIndex = 0;
+            // 
             // txtSearch
-            this.txtSearch.Font = new System.Drawing.Font("Segoe UI", 11F);
-            this.txtSearch.Location = new System.Drawing.Point(15, 15);
-            this.txtSearch.Size = new System.Drawing.Size(280, 27);
-
+            // 
+            txtSearch.Font = new Font("Segoe UI", 11F);
+            txtSearch.Location = new Point(15, 15);
+            txtSearch.Name = "txtSearch";
+            txtSearch.Size = new Size(280, 32);
+            txtSearch.TabIndex = 0;
+            // 
             // btnSearch
-            this.btnSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(123)))), ((int)(((byte)(255)))));
-            this.btnSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.btnSearch.ForeColor = System.Drawing.Color.White;
-            this.btnSearch.Location = new System.Drawing.Point(305, 14);
-            this.btnSearch.Size = new System.Drawing.Size(100, 29);
-            this.btnSearch.Text = "Search";
-            this.btnSearch.UseVisualStyleBackColor = false;
-            this.btnSearch.Click += new System.EventHandler(this.BtnSearch_Click);
-
+            // 
+            btnSearch.BackColor = Color.FromArgb(0, 123, 255);
+            btnSearch.FlatStyle = FlatStyle.Flat;
+            btnSearch.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            btnSearch.ForeColor = Color.White;
+            btnSearch.Location = new Point(305, 14);
+            btnSearch.Name = "btnSearch";
+            btnSearch.Size = new Size(100, 29);
+            btnSearch.TabIndex = 1;
+            btnSearch.Text = "Search";
+            btnSearch.UseVisualStyleBackColor = false;
+            btnSearch.Click += BtnSearch_Click;
+            // 
             // btnClearSearch
-            this.btnClearSearch.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(108)))), ((int)(((byte)(117)))), ((int)(((byte)(125)))));
-            this.btnClearSearch.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnClearSearch.Font = new System.Drawing.Font("Segoe UI", 9.5F);
-            this.btnClearSearch.ForeColor = System.Drawing.Color.White;
-            this.btnClearSearch.Location = new System.Drawing.Point(410, 14);
-            this.btnClearSearch.Size = new System.Drawing.Size(80, 29);
-            this.btnClearSearch.Text = "Reset";
-            this.btnClearSearch.UseVisualStyleBackColor = false;
-            this.btnClearSearch.Click += new System.EventHandler(this.BtnClearSearch_Click);
-
+            // 
+            btnClearSearch.BackColor = Color.FromArgb(108, 117, 125);
+            btnClearSearch.FlatStyle = FlatStyle.Flat;
+            btnClearSearch.Font = new Font("Segoe UI", 9.5F);
+            btnClearSearch.ForeColor = Color.White;
+            btnClearSearch.Location = new Point(410, 14);
+            btnClearSearch.Name = "btnClearSearch";
+            btnClearSearch.Size = new Size(80, 29);
+            btnClearSearch.TabIndex = 2;
+            btnClearSearch.Text = "Reset";
+            btnClearSearch.UseVisualStyleBackColor = false;
+            btnClearSearch.Click += BtnClearSearch_Click;
+            // 
             // dgvJobs
-            this.dgvJobs.AllowUserToAddRows = false;
-            this.dgvJobs.AllowUserToDeleteRows = false;
-            this.dgvJobs.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.dgvJobs.BackgroundColor = System.Drawing.Color.White;
-            this.dgvJobs.Location = new System.Drawing.Point(15, 60);
-            this.dgvJobs.MultiSelect = false;
-            this.dgvJobs.ReadOnly = true;
-            this.dgvJobs.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvJobs.Size = new System.Drawing.Size(520, 475);
-            this.dgvJobs.SelectionChanged += new System.EventHandler(this.DgvJobs_SelectionChanged);
-
-            // Panel 2 (Kanan - Job Details Side-panel View)
-            this.splitContainer.Panel2.Controls.Add(this.pnlDetails);
-            this.splitContainer.Panel2.Padding = new System.Windows.Forms.Padding(15);
-
+            // 
+            dgvJobs.AllowUserToAddRows = false;
+            dgvJobs.AllowUserToDeleteRows = false;
+            dgvJobs.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvJobs.BackgroundColor = Color.White;
+            dgvJobs.ColumnHeadersHeight = 29;
+            dgvJobs.Location = new Point(15, 60);
+            dgvJobs.MultiSelect = false;
+            dgvJobs.Name = "dgvJobs";
+            dgvJobs.ReadOnly = true;
+            dgvJobs.RowHeadersWidth = 51;
+            dgvJobs.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+            dgvJobs.Size = new Size(520, 475);
+            dgvJobs.TabIndex = 3;
+            dgvJobs.SelectionChanged += DgvJobs_SelectionChanged;
+            // 
             // pnlDetails
-            this.pnlDetails.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(245)))), ((int)(((byte)(247)))), ((int)(((byte)(250)))));
-            this.pnlDetails.Controls.Add(this.btnApply);
-            this.pnlDetails.Controls.Add(this.txtJobDescription);
-            this.pnlDetails.Controls.Add(this.lblDescHeader);
-            this.pnlDetails.Controls.Add(this.lblJobStatus);
-            this.pnlDetails.Controls.Add(this.lblJobTitle);
-            this.pnlDetails.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.pnlDetails.Padding = new System.Windows.Forms.Padding(20);
-
-            // lblJobTitle
-            this.lblJobTitle.Font = new System.Drawing.Font("Segoe UI", 14F, System.Drawing.FontStyle.Bold);
-            this.lblJobTitle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(33)))), ((int)(((byte)(37)))), ((int)(((byte)(41)))));
-            this.lblJobTitle.Location = new System.Drawing.Point(20, 20);
-            this.lblJobTitle.Size = new System.Drawing.Size(320, 50);
-            this.lblJobTitle.Text = "Select a Position";
-
-            // lblJobStatus
-            this.lblJobStatus.AutoSize = true;
-            this.lblJobStatus.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
-            this.lblJobStatus.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(108)))), ((int)(((byte)(117)))), ((int)(((byte)(125)))));
-            this.lblJobStatus.Location = new System.Drawing.Point(20, 75);
-            this.lblJobStatus.Text = "Status: --";
-
-            // lblDescHeader
-            this.lblDescHeader.AutoSize = true;
-            this.lblDescHeader.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
-            this.lblDescHeader.Location = new System.Drawing.Point(20, 115);
-            this.lblDescHeader.Text = "Job Description & Requirements:";
-
-            // txtJobDescription
-            this.txtJobDescription.BackColor = System.Drawing.Color.White;
-            this.txtJobDescription.Font = new System.Drawing.Font("Segoe UI", 10F);
-            this.txtJobDescription.Location = new System.Drawing.Point(23, 140);
-            this.txtJobDescription.Multiline = true;
-            this.txtJobDescription.ReadOnly = true;
-            this.txtJobDescription.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtJobDescription.Size = new System.Drawing.Size(315, 300);
-
+            // 
+            pnlDetails.BackColor = Color.FromArgb(245, 247, 250);
+            pnlDetails.Controls.Add(btnApply);
+            pnlDetails.Controls.Add(txtJobDescription);
+            pnlDetails.Controls.Add(lblDescHeader);
+            pnlDetails.Controls.Add(lblJobStatus);
+            pnlDetails.Controls.Add(lblJobTitle);
+            pnlDetails.Dock = DockStyle.Fill;
+            pnlDetails.Location = new Point(15, 15);
+            pnlDetails.Name = "pnlDetails";
+            pnlDetails.Padding = new Padding(20);
+            pnlDetails.Size = new Size(150, 520);
+            pnlDetails.TabIndex = 0;
+            // 
             // btnApply
-            this.btnApply.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(40)))), ((int)(((byte)(167)))), ((int)(((byte)(69)))));
-            this.btnApply.Enabled = false;
-            this.btnApply.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnApply.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
-            this.btnApply.ForeColor = System.Drawing.Color.White;
-            this.btnApply.Location = new System.Drawing.Point(23, 460);
-            this.btnApply.Size = new System.Drawing.Size(315, 45);
-            this.btnApply.Text = "💼 Apply for this Job";
-            this.btnApply.UseVisualStyleBackColor = false;
-            this.btnApply.Click += new System.EventHandler(this.BtnApply_Click);
-
-            // ApplicantJobBoardControl Base Configuration
-            this.BackColor = System.Drawing.Color.White;
-            this.Controls.Add(this.splitContainer);
-            this.Controls.Add(this.pnlHeader);
-            this.Size = new System.Drawing.Size(950, 600);
-            this.Load += new System.EventHandler(this.ApplicantJobBoardControl_Load);
-            
-            this.pnlHeader.ResumeLayout(false);
-            this.pnlHeader.PerformLayout();
-            this.splitContainer.Panel1.ResumeLayout(false);
-            this.splitContainer.Panel1.PerformLayout();
-            this.splitContainer.Panel2.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.splitContainer)).EndInit();
-            this.splitContainer.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.dgvJobs)).EndInit();
-            this.pnlDetails.ResumeLayout(false);
-            this.pnlDetails.PerformLayout();
-            this.ResumeLayout(false);
+            // 
+            btnApply.BackColor = Color.FromArgb(40, 167, 69);
+            btnApply.Enabled = false;
+            btnApply.FlatStyle = FlatStyle.Flat;
+            btnApply.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            btnApply.ForeColor = Color.White;
+            btnApply.Location = new Point(23, 460);
+            btnApply.Name = "btnApply";
+            btnApply.Size = new Size(315, 45);
+            btnApply.TabIndex = 0;
+            btnApply.Text = "💼 Apply for this Job";
+            btnApply.UseVisualStyleBackColor = false;
+            btnApply.Click += BtnApply_Click;
+            // 
+            // txtJobDescription
+            // 
+            txtJobDescription.BackColor = Color.White;
+            txtJobDescription.Font = new Font("Segoe UI", 10F);
+            txtJobDescription.Location = new Point(23, 140);
+            txtJobDescription.Multiline = true;
+            txtJobDescription.Name = "txtJobDescription";
+            txtJobDescription.ReadOnly = true;
+            txtJobDescription.ScrollBars = ScrollBars.Vertical;
+            txtJobDescription.Size = new Size(315, 300);
+            txtJobDescription.TabIndex = 1;
+            // 
+            // lblDescHeader
+            // 
+            lblDescHeader.AutoSize = true;
+            lblDescHeader.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            lblDescHeader.Location = new Point(20, 115);
+            lblDescHeader.Name = "lblDescHeader";
+            lblDescHeader.Size = new Size(262, 23);
+            lblDescHeader.TabIndex = 2;
+            lblDescHeader.Text = "Job Description & Requirements:";
+            // 
+            // lblJobStatus
+            // 
+            lblJobStatus.AutoSize = true;
+            lblJobStatus.Font = new Font("Segoe UI", 9.5F, FontStyle.Bold);
+            lblJobStatus.ForeColor = Color.FromArgb(108, 117, 125);
+            lblJobStatus.Location = new Point(20, 75);
+            lblJobStatus.Name = "lblJobStatus";
+            lblJobStatus.Size = new Size(77, 21);
+            lblJobStatus.TabIndex = 3;
+            lblJobStatus.Text = "Status: --";
+            // 
+            // lblJobTitle
+            // 
+            lblJobTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblJobTitle.ForeColor = Color.FromArgb(33, 37, 41);
+            lblJobTitle.Location = new Point(20, 20);
+            lblJobTitle.Name = "lblJobTitle";
+            lblJobTitle.Size = new Size(320, 50);
+            lblJobTitle.TabIndex = 4;
+            lblJobTitle.Text = "Select a Position";
+            // 
+            // ApplicantJobBoardControl
+            // 
+            BackColor = Color.White;
+            Controls.Add(splitContainer);
+            Controls.Add(pnlHeader);
+            Name = "ApplicantJobBoardControl";
+            Size = new Size(950, 600);
+            Load += ApplicantJobBoardControl_Load;
+            pnlHeader.ResumeLayout(false);
+            pnlHeader.PerformLayout();
+            splitContainer.Panel1.ResumeLayout(false);
+            splitContainer.Panel1.PerformLayout();
+            splitContainer.Panel2.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)splitContainer).EndInit();
+            splitContainer.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)dgvJobs).EndInit();
+            pnlDetails.ResumeLayout(false);
+            pnlDetails.PerformLayout();
+            ResumeLayout(false);
         }
     }
 }

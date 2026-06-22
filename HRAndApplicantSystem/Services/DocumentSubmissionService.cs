@@ -147,5 +147,81 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("\n\nPress any key to return...");
             Console.ReadKey();
         }
+
+        /// <summary>
+        /// Display all pending documents across all applications for an applicant
+        /// </summary>
+        public void ViewPendingDocuments(int applicantID)
+        {
+            Console.Clear();
+            Console.WriteLine("╔══════════════════════════════════════════════╗");
+            Console.WriteLine("║     PENDING DOCUMENTS ACROSS APPLICATIONS    ║");
+            Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+            try
+            {
+                var applications = db.GetApplicantApplications(applicantID);
+
+                if (applications.Count == 0)
+                {
+                    Console.WriteLine("No applications found.\n");
+                    Console.WriteLine("Press any key to return...");
+                    Console.ReadKey();
+                    return;
+                }
+
+                var allPendingDocs = new List<dynamic>();
+
+                foreach (var app in applications)
+                {
+                    int jobID = (int)app.JobID;
+                    var requirements = db.GetJobRequirements(jobID);
+                    var submittedDocs = db.GetApplicantDocuments(applicantID, jobID);
+
+                    foreach (var req in requirements)
+                    {
+                        var submitted = submittedDocs.FirstOrDefault(d => d.RequirementTypeID == req.RequirementTypeID);
+                        if (submitted == null)
+                        {
+                            allPendingDocs.Add(new
+                            {
+                                JobTitle = app.JobTitle,
+                                RequirementName = req.RequirementName,
+                                Status = "Missing"
+                            });
+                        }
+                    }
+                }
+
+                if (allPendingDocs.Count == 0)
+                {
+                    Console.WriteLine("✓ All required documents have been submitted!\n");
+                }
+                else
+                {
+                    Console.WriteLine($"{"Job Title",-30} {"Document Required",-35} {"Status",-15}");
+                    Console.WriteLine(new string('-', 80));
+
+                    foreach (var doc in allPendingDocs)
+                    {
+                        string jobTitle = ((string)doc.JobTitle).Length > 29 ? ((string)doc.JobTitle).Substring(0, 29) : (string)doc.JobTitle;
+                        string reqName = ((string)doc.RequirementName).Length > 34 ? ((string)doc.RequirementName).Substring(0, 34) : (string)doc.RequirementName;
+                        Console.WriteLine($"{jobTitle,-30} {reqName,-35} {(string)doc.Status,-15}");
+                    }
+
+                    Console.WriteLine(new string('-', 80));
+                    Console.WriteLine($"Total Pending: {allPendingDocs.Count}");
+                }
+
+                Console.WriteLine("\nPress any key to return...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving pending documents: {ex.Message}");
+                Console.WriteLine("\nPress any key to return...");
+                Console.ReadKey();
+            }
+        }
     }
 }

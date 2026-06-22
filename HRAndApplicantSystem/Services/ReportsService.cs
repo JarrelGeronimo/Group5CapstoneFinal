@@ -14,6 +14,42 @@ namespace HRAndApplicantSystem.Services
             db = new DatabaseHelper();
         }
 
+        // ═══════════════════════════════════════════════════════════════════════
+        // PUBLIC DATA-RETURNING METHODS (for external use/UI binding)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Get application metrics data (for external UI use)
+        /// </summary>
+        public dynamic GetApplicationMetricsData()
+        {
+            return db.GetApplicationMetrics();
+        }
+
+        /// <summary>
+        /// Get interview metrics data (for external UI use)
+        /// </summary>
+        public dynamic GetInterviewMetricsData()
+        {
+            return db.GetInterviewMetrics();
+        }
+
+        /// <summary>
+        /// Get time-to-hire metrics data (for external UI use)
+        /// </summary>
+        public dynamic GetTimeToHireMetricsData()
+        {
+            return db.GetTimeToHireMetrics();
+        }
+
+        /// <summary>
+        /// Get hiring decision metrics data (for external UI use)
+        /// </summary>
+        public dynamic GetHiringDecisionMetricsData()
+        {
+            return db.GetHiringDecisionMetrics();
+        }
+
         /// <summary>
         /// Display Reports & Statistics Dashboard
         /// </summary>

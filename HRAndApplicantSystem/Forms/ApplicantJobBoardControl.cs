@@ -131,16 +131,38 @@ namespace HRAndApplicantSystem.Forms
                 return;
             }
 
-            
-            
-            using (var appDialog = new ApplicationDialogForm(selectedJob, _currentApplicant))
+            // Open application draft form
+            var db = new DatabaseHelper();
+            using (var appDialog = new ApplicationDraftForm(db, _currentApplicant.ApplicantID, selectedJob.JobID, selectedJob.JobTitle))
             {
                 if (appDialog.ShowDialog(this) == DialogResult.OK)
                 {
-                    
+                    // Reload jobs after application
                     LoadAvailableJobs();
                     ResetDetailsPanel();
                 }
+            }
+        }
+
+        private void DgvJobs_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dgvJobs.SelectedRows.Count == 0)
+            {
+                ResetDetailsPanel();
+                return;
+            }
+
+            try
+            {
+                var selectedJob = (JobVacancy)dgvJobs.SelectedRows[0].DataBoundItem;
+                
+                lblJobTitle.Text = selectedJob.JobTitle;
+                lblJobStatus.Text = $"Status: {selectedJob.Status}";
+                txtJobDescription.Text = selectedJob.JobDetail ?? "No description available";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading job details: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

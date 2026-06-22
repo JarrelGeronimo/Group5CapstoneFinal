@@ -10,6 +10,7 @@ namespace HRAndApplicantSystem.Models
         public const string UnderReview = "Under Review";
         public const string Shortlisted = "Shortlisted";
         public const string InterviewScheduled = "Interview Scheduled";
+        public const string ForFinalReview = "For Final Review";
         public const string Accepted = "Accepted";
         public const string Rejected = "Rejected";
 
@@ -22,6 +23,7 @@ namespace HRAndApplicantSystem.Models
                 UnderReview,
                 Shortlisted,
                 InterviewScheduled,
+                ForFinalReview,
                 Accepted,
                 Rejected
             };

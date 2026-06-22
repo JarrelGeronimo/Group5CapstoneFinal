@@ -9,16 +9,18 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly int _applicationID;
-        private string _reviewDecision; // "Screening" or "Rejected"
+        private readonly string _username;
+        private string _reviewDecision; // "Shortlisted" or "Rejected"
 
         public string ReviewDecision => _reviewDecision;
         public string ReviewNotes => reviewNotesTextBox.Text.Trim();
 
-        public ApplicationReviewDialog(DatabaseHelper db, int applicationID)
+        public ApplicationReviewDialog(DatabaseHelper db, int applicationID, string username = "HR")
         {
             InitializeComponent();
             _db = db;
             _applicationID = applicationID;
+            _username = username;
             
             InitializeDialog();
         }
@@ -124,7 +126,7 @@ namespace HRAndApplicantSystem.Forms
                 return;
             }
 
-            _reviewDecision = "Screening";
+            _reviewDecision = "Shortlisted";
             SaveReview();
         }
 
@@ -144,8 +146,12 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
-                string remarks = $"Application Review (Stage 1): {ReviewNotes}";
-                bool success = _db.UpdateApplicationStatus(_applicationID, _reviewDecision, remarks, "HR Review");
+                // Convert review decision to screening result for ScreenApplication
+                string result = _reviewDecision == "Shortlisted" ? "Qualified" : "Rejected";
+                string remarks = ReviewNotes;
+                
+                // Call ScreenApplication which records to ScreeningResults table
+                bool success = _db.ScreenApplication(_applicationID, result, remarks, _username);
 
                 if (success)
                 {

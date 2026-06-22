@@ -23,7 +23,6 @@ namespace HRAndApplicantSystem.Forms
 
         public InterviewSchedulingDialog(DatabaseHelper db, int applicationID)
         {
-            InitializeComponent();
             _db = db;
             _applicationID = applicationID;
             SchedulingConfirmed = false;
@@ -75,7 +74,7 @@ namespace HRAndApplicantSystem.Forms
             interviewTimeTextBox.Location = new System.Drawing.Point(180, 110);
             interviewTimeTextBox.Size = new System.Drawing.Size(200, 30);
             interviewTimeTextBox.Text = "09:00";
-            interviewTimeTextBox.Placeholder = "09:00";
+            interviewTimeTextBox.Tag = "09:00"; // Placeholder value
             this.Controls.Add(interviewTimeTextBox);
 
             // Interview Mode
@@ -114,7 +113,7 @@ namespace HRAndApplicantSystem.Forms
             locationTextBox.Location = new System.Drawing.Point(180, 200);
             locationTextBox.Size = new System.Drawing.Size(350, 60);
             locationTextBox.Multiline = true;
-            locationTextBox.Placeholder = "Enter location or meeting link";
+            locationTextBox.Tag = "Enter location or meeting link"; // Placeholder value
             this.Controls.Add(locationTextBox);
 
             // Schedule Button
@@ -175,6 +174,22 @@ namespace HRAndApplicantSystem.Forms
                 return false;
             }
 
+            // Validate full datetime is not in the past
+            try
+            {
+                DateTime fullDateTime = ScheduledDate.Date.Add(TimeSpan.Parse(ScheduledTime));
+                if (fullDateTime < DateTime.Now)
+                {
+                    ShowError("Interview date and time cannot be in the past. Please select a future date and time.");
+                    return false;
+                }
+            }
+            catch
+            {
+                ShowError("Invalid date or time. Please check your entries.");
+                return false;
+            }
+
             // Validate location
             if (string.IsNullOrWhiteSpace(locationTextBox?.Text))
             {
@@ -189,9 +204,18 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
-                // Update status to Interview
-                string remarks = $"Interview scheduled for {ScheduledDate:yyyy-MM-dd} at {ScheduledTime}. Mode: {InterviewMode}. {(InterviewMode == "Online" ? "Link/Platform" : "Location")}: {Location}";
-                bool success = _db.UpdateApplicationStatus(_applicationID, "Interview", remarks, "HR Scheduling");
+                // Combine date and time into full DateTime
+                DateTime fullDateTime = ScheduledDate.Date.Add(TimeSpan.Parse(ScheduledTime));
+
+                // Call ScheduleInterview which properly records to InterviewSchedules table
+                bool success = _db.ScheduleInterview(
+                    _applicationID,
+                    fullDateTime,
+                    "HR Staff", // Interviewer name - can be enhanced with logged-in user later
+                    InterviewMode,
+                    Location,
+                    "HR Scheduling" // Scheduled by
+                );
 
                 if (success)
                 {

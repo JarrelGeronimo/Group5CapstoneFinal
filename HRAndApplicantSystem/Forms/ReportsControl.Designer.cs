@@ -141,7 +141,7 @@ namespace HRAndApplicantSystem.Forms
             ConfigureCardLabels(lblCard2Title, lblCard2Value);
 
             // Card 3
-            this.card3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23, ((int)(((byte)(162)))), ((int)(((byte)(184)))));
+            this.card3.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(23)))), ((int)(((byte)(162)))), ((int)(((byte)(184)))));
             this.card3.Controls.Add(this.lblCard3Value);
             this.card3.Controls.Add(this.lblCard3Title);
             this.card3.Dock = System.Windows.Forms.DockStyle.Fill;
