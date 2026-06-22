@@ -97,6 +97,7 @@ namespace HRAndApplicantSystem.Login
 
             string username = usernameTextBox.Text.Trim();
             string password = passwordTextBox.Text;
+            string email = emailTextBox.Text.Trim();
 
             // Validation
             if (string.IsNullOrWhiteSpace(username))
@@ -112,6 +113,31 @@ namespace HRAndApplicantSystem.Login
                 usernameTextBox.Focus();
                 return;
             }
+
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                ShowError("Please enter an email address.");
+                emailTextBox.Focus();
+                return;
+            }
+
+            try
+            {
+                var addr = new System.Net.MailAddress(email);
+                if (addr.Address != email)
+                {
+                    ShowError("Please enter a valid email address.");
+                    emailTextBox.Focus();
+                    return;
+                }
+            }
+            catch
+            {
+                ShowError("Please enter a valid email address.");
+                emailTextBox.Focus();
+                return;
+            } 
+
 
             if (string.IsNullOrWhiteSpace(password))
             {
