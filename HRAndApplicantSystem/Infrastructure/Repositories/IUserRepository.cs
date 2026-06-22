@@ -15,7 +15,7 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
         /// <summary>
         /// Registers a new applicant user
         /// </summary>
-        bool RegisterApplicant(string username, string password);
+        bool RegisterApplicant(string username, string password, string email);
 
         /// <summary>
         /// Gets the role ID for a user by username

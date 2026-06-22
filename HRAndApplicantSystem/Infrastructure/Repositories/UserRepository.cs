@@ -20,9 +20,9 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
             return db.ValidateLogin(username, password);
         }
 
-        public bool RegisterApplicant(string username, string password)
+        public bool RegisterApplicant(string username, string password, string email)
         {
-            return db.RegisterApplicant(username, password);
+            return db.RegisterApplicant(username, password, email);
         }
 
         public int GetUserRoleByUsername(string username)
