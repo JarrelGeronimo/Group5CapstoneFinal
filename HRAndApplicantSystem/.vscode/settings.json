@@ -3,6 +3,7 @@
         "Test-Path": true,
         ".\\HRAndApplicantSystem.exe": true,
         "Push-Location": true,
-        "&dotnet": true
+        "&dotnet": true,
+        "dotnet run": true
     }
 }

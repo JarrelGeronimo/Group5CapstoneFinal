@@ -1043,6 +1043,34 @@ namespace HRAndApplicantSystem.Database
             }
         }
 
+        public bool DeleteApplicantDocument(int applicantID, int jobID, int requirementTypeID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string deleteQuery = "DELETE FROM [ApplicantDocuments] WHERE [ApplicantID] = @applicantID AND [JobID] = @jobID AND [RequirementTypeID] = @requirementTypeID";
+
+                    using (OleDbCommand deleteCmd = new OleDbCommand(deleteQuery, conn))
+                    {
+                        deleteCmd.Parameters.AddWithValue("@applicantID", applicantID);
+                        deleteCmd.Parameters.AddWithValue("@jobID", jobID);
+                        deleteCmd.Parameters.AddWithValue("@requirementTypeID", requirementTypeID);
+
+                        int rowsAffected = deleteCmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting applicant document: {ex.Message}");
+                return false;
+            }
+        }
+
         public List<dynamic> GetApplicantDocuments(int applicantID, int jobID)
         {
             List<dynamic> documents = new List<dynamic>();
@@ -3362,6 +3390,100 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error retrieving all applicants with applications: {ex.Message}");
                 return new List<dynamic>();
             }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════════
+        // ── STATUS HISTORY RETRIEVAL METHODS ────────────────────────────────────────
+        // ═══════════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Get applicant's upcoming interviews
+        /// </summary>
+        public List<dynamic> GetApplicantInterviews(int applicantID)
+        {
+            var interviews = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = @"SELECT 
+                                        i.[ScheduleID],
+                                        i.[ApplicationID],
+                                        i.[InterviewDate],
+                                        i.[InterviewTime],
+                                        i.[Interviewer],
+                                        i.[Location],
+                                        i.[Status],
+                                        jv.[JobTitle],
+                                        a.[ApplicationID]
+                                    FROM [InterviewSchedules] i
+                                    INNER JOIN [Applications] a ON i.[ApplicationID] = a.[ApplicationID]
+                                    INNER JOIN [JobVacancies] jv ON a.[JobID] = jv.[JobID]
+                                    WHERE a.[ApplicantID] = @applicantID
+                                    ORDER BY i.[InterviewDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                interviews.Add(new
+                                {
+                                    ScheduleID = reader["ScheduleID"],
+                                    ApplicationID = reader["ApplicationID"],
+                                    InterviewDate = reader["InterviewDate"] != DBNull.Value ? Convert.ToDateTime(reader["InterviewDate"]) : DateTime.MinValue,
+                                    InterviewTime = reader["InterviewTime"] != DBNull.Value ? Convert.ToDateTime(reader["InterviewTime"]) : DateTime.MinValue,
+                                    Interviewer = reader["Interviewer"]?.ToString() ?? "",
+                                    Location = reader["Location"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? ""
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving applicant interviews: {ex.Message}");
+            }
+
+            return interviews;
+        }
+
+        /// <summary>
+        /// Display application status timeline in a readable format
+        /// </summary>
+        public void DisplayApplicationTimeline(int applicationID)
+        {
+            var history = GetApplicationStatusHistory(applicationID);
+
+            if (history.Count == 0)
+            {
+                Console.WriteLine("No status history found for this application.");
+                return;
+            }
+
+            Console.WriteLine("\n=== APPLICATION STATUS TIMELINE ===\n");
+            Console.WriteLine($"{"Date/Time",-25} {"Status",-25} {"Remarks",-40}");
+            Console.WriteLine(new string('=', 90));
+
+            foreach (var entry in history)
+            {
+                DateTime dateChanged = entry.DateChanged;
+                string status = entry.Status;
+                string remarks = ((string)entry.Remarks).Length > 39 ? ((string)entry.Remarks).Substring(0, 39) : (string)entry.Remarks;
+
+                Console.WriteLine($"{dateChanged:yyyy-MM-dd HH:mm,-25} {status,-25} {remarks,-40}");
+            }
+
+            Console.WriteLine(new string('=', 90));
         }
     }
 }

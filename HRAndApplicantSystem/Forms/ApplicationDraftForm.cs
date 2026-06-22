@@ -11,7 +11,9 @@ namespace HRAndApplicantSystem.Forms
         private readonly int _applicantID;
         private readonly int _jobID;
         private readonly string _jobTitle;
+        private int _applicationID = 0; // Track the created application ID
         private List<dynamic>? _jobRequirements;
+        private Dictionary<int, bool> _submittedDocuments = new Dictionary<int, bool>(); // Track submitted requirements
         private TextBox? coverLetterTextBox;
         private Label? statusLabel;
         private Button? submitButton;
@@ -41,6 +43,10 @@ namespace HRAndApplicantSystem.Forms
             {
                 System.Diagnostics.Debug.WriteLine("ApplicationDraftForm OnLoad: Starting");
                 System.Diagnostics.Debug.WriteLine($"  ApplicantID: {_applicantID}, JobID: {_jobID}, JobTitle: {_jobTitle}");
+                
+                // Create draft application immediately so we can track document submissions
+                _applicationID = _db.CreateDraftApplication(_applicantID, _jobID);
+                System.Diagnostics.Debug.WriteLine($"  Created draft application with ID: {_applicationID}");
                 
                 LoadJobRequirements();
                 System.Diagnostics.Debug.WriteLine($"  Loaded {_jobRequirements?.Count ?? 0} requirements");
@@ -163,33 +169,86 @@ namespace HRAndApplicantSystem.Forms
                     
                     foreach (var req in _jobRequirements)
                     {
+                        int reqTypeId = req.RequirementTypeID;
+                        
+                        // Check if document has been submitted
+                        var submittedDoc = _db.GetApplicantDocuments(_applicantID, _jobID).FirstOrDefault(d => d.RequirementTypeID == reqTypeId);
+                        bool isSubmitted = submittedDoc != null;
+                        _submittedDocuments[reqTypeId] = isSubmitted;
+                        
                         // Requirement Label
                         Label reqLabel = new Label();
-                        reqLabel.Text = $"• {req.RequirementName ?? "Document"}";
+                        reqLabel.Text = $"• {req.RequirementName ?? "Document"} {(isSubmitted ? "✓" : "✗")}";
                         reqLabel.Font = new System.Drawing.Font("Arial", 9);
+                        reqLabel.ForeColor = isSubmitted ? System.Drawing.Color.FromArgb(0, 100, 0) : System.Drawing.Color.FromArgb(200, 0, 0);
                         reqLabel.Location = new System.Drawing.Point(40, yOffset);
-                        reqLabel.Size = new System.Drawing.Size(200, 20);
+                        reqLabel.Size = new System.Drawing.Size(300, 20);
                         reqLabel.AutoSize = false;
                         this.Controls.Add(reqLabel);
                         System.Diagnostics.Debug.WriteLine($"  Added requirement: {req.RequirementName}");
 
-                        // Upload Button
-                        Button uploadBtn = new Button();
-                        uploadBtn.Text = "Upload";
-                        uploadBtn.Size = new System.Drawing.Size(80, 25);
-                        uploadBtn.Location = new System.Drawing.Point(250, yOffset - 2);
-                        uploadBtn.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
-                        uploadBtn.ForeColor = System.Drawing.Color.White;
-                        uploadBtn.Font = new System.Drawing.Font("Arial", 8, System.Drawing.FontStyle.Bold);
-                        uploadBtn.Click += (s, e) => MessageBox.Show($"Document upload for {req.RequirementName} - Coming in Phase 4.2", "Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        this.Controls.Add(uploadBtn);
+                        // Submit Button
+                        Button submitBtn = new Button();
+                        submitBtn.Text = isSubmitted ? "Unsubmit" : "Submit";
+                        submitBtn.Size = new System.Drawing.Size(80, 25);
+                        submitBtn.Location = new System.Drawing.Point(350, yOffset - 2);
+                        submitBtn.BackColor = isSubmitted ? System.Drawing.Color.FromArgb(169, 169, 169) : System.Drawing.Color.FromArgb(0, 102, 204);
+                        submitBtn.ForeColor = System.Drawing.Color.White;
+                        submitBtn.Font = new System.Drawing.Font("Arial", 8, System.Drawing.FontStyle.Bold);
+                        
+                        // Closure to capture current values
+                        int capturedReqTypeId = reqTypeId;
+                        string capturedReqName = req.RequirementName ?? "Document";
+                        Label capturedLabel = reqLabel;
+                        Button capturedButton = submitBtn;
+                        
+                        submitBtn.Click += (s, e) =>
+                        {
+                            try
+                            {
+                                if (_submittedDocuments.ContainsKey(capturedReqTypeId) && _submittedDocuments[capturedReqTypeId])
+                                {
+                                    // Unsubmit
+                                    bool success = _db.DeleteApplicantDocument(_applicantID, _jobID, capturedReqTypeId);
+                                    if (success)
+                                    {
+                                        _submittedDocuments[capturedReqTypeId] = false;
+                                        capturedLabel.Text = $"• {capturedReqName} ✗";
+                                        capturedLabel.ForeColor = System.Drawing.Color.FromArgb(200, 0, 0);
+                                        capturedButton.Text = "Submit";
+                                        capturedButton.BackColor = System.Drawing.Color.FromArgb(0, 102, 204);
+                                        MessageBox.Show("Document unsubmitted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    }
+                                }
+                                else
+                                {
+                                    // Submit
+                                    bool success = _db.SubmitApplicantDocument(_applicantID, _jobID, capturedReqTypeId, "Submitted by applicant", "Submitted");
+                                    if (success)
+                                    {
+                                        _submittedDocuments[capturedReqTypeId] = true;
+                                        capturedLabel.Text = $"• {capturedReqName} ✓";
+                                        capturedLabel.ForeColor = System.Drawing.Color.FromArgb(0, 100, 0);
+                                        capturedButton.Text = "Unsubmit";
+                                        capturedButton.BackColor = System.Drawing.Color.FromArgb(169, 169, 169);
+                                        MessageBox.Show("Document submitted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            }
+                        };
+                        
+                        this.Controls.Add(submitBtn);
 
                         // Status Label
                         Label statusLbl = new Label();
-                        statusLbl.Text = "Not Uploaded";
+                        statusLbl.Text = isSubmitted ? "Submitted" : "Not Submitted";
                         statusLbl.Font = new System.Drawing.Font("Arial", 8);
-                        statusLbl.ForeColor = System.Drawing.Color.FromArgb(220, 20, 60);
-                        statusLbl.Location = new System.Drawing.Point(350, yOffset);
+                        statusLbl.ForeColor = isSubmitted ? System.Drawing.Color.FromArgb(0, 100, 0) : System.Drawing.Color.FromArgb(200, 0, 0);
+                        statusLbl.Location = new System.Drawing.Point(450, yOffset);
                         statusLbl.Size = new System.Drawing.Size(200, 20);
                         statusLbl.AutoSize = false;
                         this.Controls.Add(statusLbl);
@@ -295,9 +354,8 @@ namespace HRAndApplicantSystem.Forms
 
         private void SubmitButton_Click(object? sender, EventArgs? e)
         {
-            // In Phase 4.2, validate that all required documents are uploaded
-            // For now, just submit
-            System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] Called for applicantID={_applicantID}, jobID={_jobID}");
+            // Submit the application by changing status from Draft to Submitted
+            System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] Called for applicationID={_applicationID}, applicantID={_applicantID}, jobID={_jobID}");
             
             DialogResult result = MessageBox.Show(
                 "Are you sure you want to submit this application?\nYou will not be able to edit it after submission.",
@@ -311,9 +369,9 @@ namespace HRAndApplicantSystem.Forms
             {
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] Calling _db.SubmitJobApplication");
-                    bool success = _db.SubmitJobApplication(_applicantID, _jobID);
-                    System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] SubmitJobApplication returned: {success}");
+                    System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] Updating application status from Draft to Submitted");
+                    bool success = _db.UpdateApplicationStatus(_applicationID, "Submitted", "Applicant submitted application", _applicantID.ToString());
+                    System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] UpdateApplicationStatus returned: {success}");
                     
                     if (success)
                     {
@@ -323,7 +381,7 @@ namespace HRAndApplicantSystem.Forms
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine("[SubmitButton_Click] SubmitJobApplication failed");
+                        System.Diagnostics.Debug.WriteLine("[SubmitButton_Click] UpdateApplicationStatus failed");
                         ShowError("Failed to submit application. Please try again.");
                     }
                 }
@@ -338,18 +396,10 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
-                // Check if draft already exists for this application
-                int applicationID = _db.CreateDraftApplication(_applicantID, _jobID);
-                if (applicationID > 0)
-                {
-                    MessageBox.Show("Application saved as draft. You can return to edit it later.", "Draft Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    this.DialogResult = DialogResult.OK;
-                    this.Close();
-                }
-                else
-                {
-                    ShowError("Failed to save draft. Please try again.");
-                }
+                // Draft is already created on load, just close
+                MessageBox.Show("Application saved as draft. You can return to edit it later.", "Draft Saved", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                this.DialogResult = DialogResult.OK;
+                this.Close();
             }
             catch (Exception ex)
             {

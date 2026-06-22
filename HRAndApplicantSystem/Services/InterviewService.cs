@@ -203,7 +203,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     EVALUATE INTERVIEW                       ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var forInterview = db.GetApplicationsByStatus("Interview");
+            var forInterview = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (forInterview.Count == 0)
             {
@@ -282,7 +282,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("2. Rejected");
             Console.Write("Select recommendation: ");
             string recChoice = Console.ReadLine()?.Trim() ?? "2";
-            string newStatus = recChoice == "1" ? "For Final Review" : ApplicationStatus.Rejected;
+            string newStatus = recChoice == "1" ? ApplicationStatus.ForFinalReview : ApplicationStatus.Rejected;
 
             bool success = db.EvaluateInterview(
                 selected.ApplicationID,
@@ -317,7 +317,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     CANCEL INTERVIEW                         ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus("Interview");
+            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (scheduled.Count == 0)
             {
@@ -393,7 +393,7 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("║     RESCHEDULE INTERVIEW                     ║");
             Console.WriteLine("╚══════════════════════════════════════════════╝\n");
 
-            var scheduled = db.GetApplicationsByStatus("Interview");
+            var scheduled = db.GetApplicationsByStatus(ApplicationStatus.InterviewScheduled);
 
             if (scheduled.Count == 0)
             {

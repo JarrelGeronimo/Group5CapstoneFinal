@@ -19,6 +19,7 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly int _userRoleID;
+        private readonly string _username;
         private string _defaultStatusFilter = "All Statuses"; // Default filter
         private List<dynamic>? _allApplications;
         private DataGridView? applicationsDataGridView;
@@ -34,11 +35,12 @@ namespace HRAndApplicantSystem.Forms
         private Panel? buttonPanel;
         private Button? closeButton;
 
-        public ApplicationManagementForm(DatabaseHelper db, int userRoleID = 0, string initialStatusFilter = "All Statuses")
+        public ApplicationManagementForm(DatabaseHelper db, int userRoleID = 0, string initialStatusFilter = "All Statuses", string username = "HR")
         {
             InitializeComponent();
             _db = db;
             _userRoleID = userRoleID;
+            _username = username;
             _defaultStatusFilter = initialStatusFilter;
             this.Text = "Application Management";
             this.StartPosition = FormStartPosition.CenterParent;
@@ -228,6 +230,30 @@ namespace HRAndApplicantSystem.Forms
                     });
                     System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Using 'Pending' mode - showing Submitted and Under Review applications");
                 }
+                else if (_defaultStatusFilter.Equals("Shortlisted", StringComparison.OrdinalIgnoreCase))
+                {
+                    // "Shortlisted" mode shows Shortlisted applications (legacy "Screening" also supported)
+                    filtered = filtered.Where(a =>
+                    {
+                        string appStatus = (a.Status?.ToString() ?? "").Trim();
+                        bool matches = appStatus.Equals("Shortlisted", StringComparison.OrdinalIgnoreCase) ||
+                                      appStatus.Equals("Screening", StringComparison.OrdinalIgnoreCase);
+                        return matches;
+                    });
+                    System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Using 'Shortlisted' mode - showing Shortlisted and legacy Screening applications");
+                }
+                else if (_defaultStatusFilter.Equals("Interview Scheduled", StringComparison.OrdinalIgnoreCase))
+                {
+                    // "Interview Scheduled" mode shows Interview Scheduled applications (legacy "Interview" also supported)
+                    filtered = filtered.Where(a =>
+                    {
+                        string appStatus = (a.Status?.ToString() ?? "").Trim();
+                        bool matches = appStatus.Equals("Interview Scheduled", StringComparison.OrdinalIgnoreCase) ||
+                                      appStatus.Equals("Interview", StringComparison.OrdinalIgnoreCase);
+                        return matches;
+                    });
+                    System.Diagnostics.Debug.WriteLine($"[ApplyAllFilters] Using 'Interview Scheduled' mode - showing Interview Scheduled and legacy Interview applications");
+                }
                 else
                 {
                     // Standard single-status filter
@@ -293,11 +319,111 @@ namespace HRAndApplicantSystem.Forms
                 {
                     var row = applicationsDataGridView.SelectedRows[0];
                     int applicantId = Convert.ToInt32(row.Cells["ApplicantID"]?.Value ?? 0);
-                    string applicantName = $"{row.Cells["FirstName"]?.Value} {row.Cells["LastName"]?.Value}";
+                    
+                    if (applicantId <= 0)
+                    {
+                        MessageBox.Show("Invalid applicant ID.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
-                    // TODO: Open ApplicantProfileForm (read-only)
-                    MessageBox.Show($"Viewing profile for: {applicantName} (ID: {applicantId})\n\nApplicant Profile viewer coming in Phase 3.2",
-                        "View Profile", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Get applicant info
+                    var applicant = _db.GetApplicantByID(applicantId);
+                    
+                    if (applicant == null)
+                    {
+                        MessageBox.Show("Could not retrieve applicant information.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // Create profile form
+                    Form profileForm = new Form();
+                    profileForm.Text = "View Applicant Profile";
+                    profileForm.Size = new System.Drawing.Size(650, 550);
+                    profileForm.StartPosition = FormStartPosition.CenterParent;
+                    profileForm.AutoScroll = true;
+
+                    // Create main panel
+                    Panel mainPanel = new Panel();
+                    mainPanel.Dock = DockStyle.Fill;
+                    mainPanel.AutoScroll = true;
+                    mainPanel.Padding = new Padding(15);
+
+                    int yPos = 10;
+
+                    // Title
+                    Label titleLabel = new Label() { Text = "Applicant Information (Read-Only)", Location = new System.Drawing.Point(15, yPos), Width = 300, Font = new Font("Arial", 12, FontStyle.Bold) };
+                    mainPanel.Controls.Add(titleLabel);
+                    yPos += 35;
+
+                    // First Name
+                    Label firstNameLabel = new Label() { Text = "First Name:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    Label firstNameValue = new Label() { Text = applicant.FirstName ?? "", Location = new System.Drawing.Point(180, yPos), Width = 380 };
+                    mainPanel.Controls.Add(firstNameLabel);
+                    mainPanel.Controls.Add(firstNameValue);
+                    yPos += 30;
+
+                    // Last Name
+                    Label lastNameLabel = new Label() { Text = "Last Name:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    Label lastNameValue = new Label() { Text = applicant.LastName ?? "", Location = new System.Drawing.Point(180, yPos), Width = 380 };
+                    mainPanel.Controls.Add(lastNameLabel);
+                    mainPanel.Controls.Add(lastNameValue);
+                    yPos += 30;
+
+                    // Contact
+                    Label contactLabel = new Label() { Text = "Contact Number:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    Label contactValue = new Label() { Text = applicant.ContactNo ?? "", Location = new System.Drawing.Point(180, yPos), Width = 380 };
+                    mainPanel.Controls.Add(contactLabel);
+                    mainPanel.Controls.Add(contactValue);
+                    yPos += 30;
+
+                    // Address
+                    Label addressLabel = new Label() { Text = "Address:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    mainPanel.Controls.Add(addressLabel);
+                    yPos += 25;
+
+                    TextBox addressValue = new TextBox() { Text = applicant.Address ?? "", Location = new System.Drawing.Point(15, yPos), Width = 590, Height = 60, ReadOnly = true, Multiline = true, BackColor = System.Drawing.Color.WhiteSmoke };
+                    mainPanel.Controls.Add(addressValue);
+                    yPos += 70;
+
+                    // Education
+                    Label educationLabel = new Label() { Text = "Education:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    mainPanel.Controls.Add(educationLabel);
+                    yPos += 25;
+
+                    TextBox educationValue = new TextBox() { Text = applicant.Education ?? "", Location = new System.Drawing.Point(15, yPos), Width = 590, Height = 60, ReadOnly = true, Multiline = true, BackColor = System.Drawing.Color.WhiteSmoke };
+                    mainPanel.Controls.Add(educationValue);
+                    yPos += 70;
+
+                    // Skills
+                    Label skillsLabel = new Label() { Text = "Skills:", Location = new System.Drawing.Point(15, yPos), Width = 150 };
+                    mainPanel.Controls.Add(skillsLabel);
+                    yPos += 25;
+
+                    TextBox skillsValue = new TextBox() { Text = applicant.Skills ?? "", Location = new System.Drawing.Point(15, yPos), Width = 590, Height = 60, ReadOnly = true, Multiline = true, BackColor = System.Drawing.Color.WhiteSmoke };
+                    mainPanel.Controls.Add(skillsValue);
+
+                    profileForm.Controls.Add(mainPanel);
+
+                    // Create bottom button panel
+                    Panel bottomPanel = new Panel();
+                    bottomPanel.Height = 60;
+                    bottomPanel.Dock = DockStyle.Bottom;
+                    bottomPanel.BackColor = System.Drawing.Color.WhiteSmoke;
+                    bottomPanel.Padding = new Padding(10);
+
+                    Button closeButton = new Button();
+                    closeButton.Text = "Close";
+                    closeButton.Size = new System.Drawing.Size(100, 35);
+                    closeButton.Location = new System.Drawing.Point(540, 10);
+                    closeButton.BackColor = System.Drawing.Color.FromArgb(220, 20, 60);
+                    closeButton.ForeColor = System.Drawing.Color.White;
+                    closeButton.Font = new Font("Arial", 10, FontStyle.Bold);
+                    closeButton.Click += (s, e) => profileForm.Close();
+                    bottomPanel.Controls.Add(closeButton);
+
+                    profileForm.Controls.Add(bottomPanel);
+
+                    profileForm.ShowDialog(this);
                 }
                 catch (Exception ex)
                 {
@@ -318,10 +444,128 @@ namespace HRAndApplicantSystem.Forms
                 {
                     var row = applicationsDataGridView.SelectedRows[0];
                     int applicationId = Convert.ToInt32(row.Cells["ApplicationID"]?.Value ?? 0);
+                    int applicantId = Convert.ToInt32(row.Cells["ApplicantID"]?.Value ?? 0);
+                    int jobId = Convert.ToInt32(row.Cells["JobID"]?.Value ?? 0);
+                    string jobTitle = row.Cells["JobTitle"]?.Value?.ToString() ?? "Unknown";
+                    
+                    if (applicationId <= 0 || applicantId <= 0 || jobId <= 0)
+                    {
+                        MessageBox.Show("Invalid application data.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
-                    // TODO: Open DocumentReviewForm
-                    MessageBox.Show($"Viewing documents for Application ID: {applicationId}\n\nDocument viewer coming in Phase 3.2",
-                        "View Documents", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Get submitted documents
+                    var documents = _db.GetApplicantDocuments(applicantId, jobId);
+                    
+                    // Get all job requirements
+                    var requirements = _db.GetJobRequirements(jobId);
+
+                    // Create documents form
+                    Form documentsForm = new Form();
+                    documentsForm.Text = "View Submitted Documents";
+                    documentsForm.Size = new System.Drawing.Size(700, 500);
+                    documentsForm.StartPosition = FormStartPosition.CenterParent;
+                    documentsForm.AutoScroll = true;
+
+                    // Create main panel
+                    Panel mainPanel = new Panel();
+                    mainPanel.Dock = DockStyle.Fill;
+                    mainPanel.AutoScroll = true;
+                    mainPanel.Padding = new Padding(15);
+
+                    int yPos = 10;
+
+                    // Title
+                    Label titleLabel = new Label() { Text = "Submitted Documents (Read-Only)", Location = new System.Drawing.Point(15, yPos), Width = 500, Font = new Font("Arial", 12, FontStyle.Bold) };
+                    mainPanel.Controls.Add(titleLabel);
+                    yPos += 35;
+
+                    // Job Title
+                    Label jobTitleLabel = new Label() { Text = "Job Title:", Location = new System.Drawing.Point(15, yPos), Width = 150, Font = new Font("Arial", 10, FontStyle.Bold) };
+                    Label jobTitleValue = new Label() { Text = jobTitle, Location = new System.Drawing.Point(180, yPos), Width = 450 };
+                    mainPanel.Controls.Add(jobTitleLabel);
+                    mainPanel.Controls.Add(jobTitleValue);
+                    yPos += 35;
+
+                    // Application ID
+                    Label appIdLabel = new Label() { Text = "Application ID:", Location = new System.Drawing.Point(15, yPos), Width = 150, Font = new Font("Arial", 10, FontStyle.Bold) };
+                    Label appIdValue = new Label() { Text = applicationId.ToString(), Location = new System.Drawing.Point(180, yPos), Width = 450 };
+                    mainPanel.Controls.Add(appIdLabel);
+                    mainPanel.Controls.Add(appIdValue);
+                    yPos += 35;
+
+                    // Separator
+                    Label separatorLabel = new Label() { Text = new string('─', 80), Location = new System.Drawing.Point(15, yPos), Width = 650 };
+                    mainPanel.Controls.Add(separatorLabel);
+                    yPos += 25;
+
+                    // Documents List
+                    Label documentsHeader = new Label() { Text = "Required Documents:", Location = new System.Drawing.Point(15, yPos), Width = 300, Font = new Font("Arial", 10, FontStyle.Bold) };
+                    mainPanel.Controls.Add(documentsHeader);
+                    yPos += 30;
+
+                    if (requirements == null || requirements.Count == 0)
+                    {
+                        Label noReqLabel = new Label() { Text = "No requirements defined for this job.", Location = new System.Drawing.Point(15, yPos), Width = 600, ForeColor = System.Drawing.Color.Gray };
+                        mainPanel.Controls.Add(noReqLabel);
+                    }
+                    else
+                    {
+                        foreach (var req in requirements)
+                        {
+                            int reqTypeId = req.RequirementTypeID;
+                            string reqName = req.RequirementName ?? "Unknown";
+
+                            // Check if this requirement has been submitted
+                            var submittedDoc = documents?.FirstOrDefault(d => d.RequirementTypeID == reqTypeId);
+                            bool isSubmitted = submittedDoc != null;
+
+                            // Create a panel for each requirement
+                            Panel reqPanel = new Panel();
+                            reqPanel.Location = new System.Drawing.Point(15, yPos);
+                            reqPanel.Size = new System.Drawing.Size(650, 45);
+                            reqPanel.BackColor = isSubmitted ? System.Drawing.Color.FromArgb(200, 255, 200) : System.Drawing.Color.FromArgb(255, 200, 200);
+                            reqPanel.BorderStyle = BorderStyle.FixedSingle;
+
+                            Label reqNameLabel = new Label() { Text = "• " + reqName, Location = new System.Drawing.Point(10, 5), Width = 450, Font = new Font("Arial", 9) };
+                            Label statusLabel = new Label() { Text = isSubmitted ? "✓ Submitted" : "✗ Not Submitted", Location = new System.Drawing.Point(470, 5), Width = 160, Font = new Font("Arial", 9, FontStyle.Bold), ForeColor = isSubmitted ? System.Drawing.Color.FromArgb(0, 100, 0) : System.Drawing.Color.FromArgb(200, 0, 0) };
+
+                            if (isSubmitted)
+                            {
+                                Label statusTextLabel = new Label() { Text = $"Status: {submittedDoc?.DocumentStatus ?? "Submitted"}", Location = new System.Drawing.Point(10, 22), Width = 620, Font = new Font("Arial", 8), ForeColor = System.Drawing.Color.DarkGreen };
+                                reqPanel.Controls.Add(statusTextLabel);
+                            }
+
+                            reqPanel.Controls.Add(reqNameLabel);
+                            reqPanel.Controls.Add(statusLabel);
+
+                            mainPanel.Controls.Add(reqPanel);
+                            yPos += 55;
+                        }
+                    }
+
+                    documentsForm.Controls.Add(mainPanel);
+
+                    // Create bottom button panel
+                    Panel bottomPanel = new Panel();
+                    bottomPanel.Height = 60;
+                    bottomPanel.Dock = DockStyle.Bottom;
+                    bottomPanel.BackColor = System.Drawing.Color.WhiteSmoke;
+                    bottomPanel.Padding = new Padding(10);
+
+                    Button closeButton = new Button();
+                    closeButton.Text = "Close";
+                    closeButton.Size = new System.Drawing.Size(100, 35);
+                    closeButton.Location = new System.Drawing.Point(590, 10);
+                    closeButton.BackColor = System.Drawing.Color.FromArgb(220, 20, 60);
+                    closeButton.ForeColor = System.Drawing.Color.White;
+                    closeButton.Font = new Font("Arial", 10, FontStyle.Bold);
+                    closeButton.Click += (s, e) => documentsForm.Close();
+                    bottomPanel.Controls.Add(closeButton);
+
+                    documentsForm.Controls.Add(bottomPanel);
+
+                    documentsForm.ShowDialog(this);
                 }
                 catch (Exception ex)
                 {
@@ -365,7 +609,7 @@ namespace HRAndApplicantSystem.Forms
                                 _db.UpdateApplicationStatus(applicationId, "Under Review", "HR started reviewing application", _userRoleID.ToString());
                             }
                             
-                            using (ApplicationReviewDialog dialog = new ApplicationReviewDialog(_db, applicationId))
+                            using (ApplicationReviewDialog dialog = new ApplicationReviewDialog(_db, applicationId, _username))
                             {
                                 result = dialog.ShowDialog(this);
                                 newStatus = dialog.ReviewDecision;
@@ -374,6 +618,7 @@ namespace HRAndApplicantSystem.Forms
                             break;
 
                         case "Screening":
+                        case "Shortlisted":
                             // Stage 2a: Schedule Interview (HR Staff, Manager, Admin can do)
                             System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening InterviewSchedulingDialog for scheduling");
                             using (InterviewSchedulingDialog dialog = new InterviewSchedulingDialog(_db, applicationId))
@@ -381,13 +626,13 @@ namespace HRAndApplicantSystem.Forms
                                 result = dialog.ShowDialog(this);
                                 if (result == DialogResult.OK)
                                 {
-                                    newStatus = "Interview";
-                                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Interview scheduled, status changed to Interview");
+                                    newStatus = "Interview Scheduled";
+                                    System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Interview scheduled, status changed to Interview Scheduled");
                                 }
                             }
                             break;
 
-                        case "Interview":
+                        case "Interview Scheduled":
                             // Stage 2b: Evaluate Interview (HR Staff, Manager, Admin can do)
                             System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening InterviewDialog for evaluation");
                             using (InterviewDialog dialog = new InterviewDialog(_db, applicationId))
