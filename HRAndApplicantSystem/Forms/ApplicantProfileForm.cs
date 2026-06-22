@@ -239,7 +239,7 @@ namespace HRAndApplicantSystem.Forms
                 };
 
                 // Save to database
-                bool success = _db.SaveApplicantInfo(_username, applicant);
+                bool success = _db.UpdateApplicantInfo(_username, applicant);
 
                 if (success)
                 {

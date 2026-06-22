@@ -17,9 +17,9 @@ namespace HRAndApplicantSystem.Login
             return userRepository.ValidateLogin(username, password);
         }
 
-        public bool RegisterApplicant(string username, string password)
+        public bool RegisterApplicant(string username, string password, string email)
         {
-            return userRepository.RegisterApplicant(username, password);
+            return userRepository.RegisterApplicant(username, password, email);
         }
     }
 }

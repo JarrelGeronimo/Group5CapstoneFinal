@@ -82,7 +82,6 @@ namespace HRAndApplicantSystem.Forms
                     case ApplicationStatus.Shortlisted: shortlisted++; break;
                     case ApplicationStatus.InterviewScheduled: interview++; break;
                     case ApplicationStatus.Accepted: accepted++; break;
-                    case ApplicationStatus.Blinded: 
                     case ApplicationStatus.Rejected: rejected++; break;
                 }
             }

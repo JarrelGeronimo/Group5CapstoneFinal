@@ -8,8 +8,6 @@ namespace HRAndApplicantSystem.Login
         private System.Windows.Forms.Label usernameLabel;
         private System.Windows.Forms.TextBox usernameTextBox;
         private System.Windows.Forms.Label passwordLabel;
-        private System.Windows.Forms.Label emailLabel;
-        private System.Windows.Forms.TextBox emailTextBox;
         private System.Windows.Forms.TextBox passwordTextBox;
         private System.Windows.Forms.Button loginButton;
         private System.Windows.Forms.Button registerButton;
@@ -87,25 +85,6 @@ namespace HRAndApplicantSystem.Login
             this.passwordLabel.Size = new System.Drawing.Size(72, 19);
             this.passwordLabel.TabIndex = 3;
             this.passwordLabel.Text = "Password:";
-
-            //emailLabel
-            this.emailLabel = new System.Windows.Forms.Label();
-            this.emailLabel.AutoSize = true;
-            this.emailLabel.Location = new System.Drawing.Point(50, 130);
-            this.emailLabel.Name = "emailLabel";
-            this.emailLabel.Size = new System.Drawing.Size(36, 15);
-            this.emailLabel.Text = "Email:";
-
-            //emailTextBox
-            this.emailTextBox = new System.Windows.Forms.TextBox();
-            this.emailTextBox.Location = new System.Drawing.Point(50, 150);
-            this.emailTextBox.Name = "emailTextBox";
-            this.emailTextBox.Size = new System.Drawing.Size(300, 23);
-            this.emailTextBox.TabIndex = 4;
-
-            // Add to controls - ensure these lines are added near other Controls.Add(...)
-            this.Controls.Add(this.emailLabel);
-            this.Controls.Add(this.emailTextBox);
 
             // passwordTextBox
             this.passwordTextBox.Font = new System.Drawing.Font("Segoe UI", 10F);
