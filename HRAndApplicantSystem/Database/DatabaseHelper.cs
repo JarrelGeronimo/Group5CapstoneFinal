@@ -143,7 +143,7 @@ namespace HRAndApplicantSystem.Database
 
                             using (OleDbCommand cmd = new OleDbCommand(query, conn))
                             {
-                                cmd.Parameters.AddWithValue("@login", loginIdentifier);
+                                cmd.Parameters.AddWithValue("@login", username);
 
                                 using (OleDbDataReader reader = cmd.ExecuteReader())
                                 {
@@ -172,7 +172,7 @@ namespace HRAndApplicantSystem.Database
                                    if (storedPassword.Equals(password, StringComparison.Ordinal))
                                    {
                                       // Hash the password and update the database for future logins
-                                      UpdatePasswordHashByLogin(loginIdentifier, password);
+                                      UpdatePasswordHashByLogin(username, password);
                                       return true;
                                    }
 
@@ -203,7 +203,7 @@ namespace HRAndApplicantSystem.Database
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@newPassword", hashedPassword);
-                        cmd.Parameters.AddWithValue("@username", loginIdentifier);
+                        cmd.Parameters.AddWithValue("@login", loginIdentifier);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
@@ -213,6 +213,29 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating password hash by login: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool UsernameExists(string username)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = @username";
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@username", username);
+                        object result = cmd.ExecuteScalar();
+                        return result != null && Convert.ToInt32(result) > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking username: {ex.Message}");
                 return false;
             }
         }
@@ -426,6 +449,7 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating applicant info: {ex.Message}");
+                MessageBox.Show($"Database error: {ex.Message}", "Debug Error");
                 return false;
             }
         }
@@ -2243,6 +2267,11 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error changing user password: {ex.Message}");
                 return false;
             }
+        }
+
+        public bool SaveApplicantInfo(string username, Applicant applicant)
+        {
+            return UpdateApplicantInfo(username, applicant);
         }
 
         public bool ChangeUsername(string oldUsername, string newUsername)
