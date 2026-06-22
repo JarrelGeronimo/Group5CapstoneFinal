@@ -5,6 +5,9 @@ using System.Data.OleDb;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 using ApplicationModel = HRAndApplicantSystem.Models.Application;
+using System.Drawing.Text;
+using System.Data;
+using HRAndApplicantSystem.Infrastructure.Repositories;
 
 namespace HRAndApplicantSystem.Database
 {
@@ -36,58 +39,157 @@ namespace HRAndApplicantSystem.Database
             }
 
             connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
+            EnsureSchema();
         }
-
-        public bool ValidateLogin(string username, string password)
-        {
-            try
+            private void EnsureSchema()
             {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                try
                 {
-                    conn.Open();
-
-                    // Accept all valid roles
-                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (" +
-                        RoleConstants.APPLICANT + ", " +
-                        RoleConstants.HR + ", " +
-                        RoleConstants.HR_MANAGER + ", " +
-                        RoleConstants.ADMIN + "))";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    using (OleDbConnection conn = new OleDbConnection(connectionString))
                     {
-                        cmd.Parameters.AddWithValue("@username", username);
+                       conn.Open();
 
-                        object result = cmd.ExecuteScalar();
+                       bool hasEmail = false;
+                       bool hasIsActive = false;
 
-                        if (result == null || result == DBNull.Value)
-                            return false;
+                       DataTable columns = conn.GetSchema("Columns", new string[] { null, null, "Users", null });
+                       foreach (DataRow row in columns.Rows)
+                       {
+                           string columnName = row["COLUMN_NAME"]?.ToString() ?? "";
+                           if (string.Equals(columnName, "Email", StringComparison.OrdinalIgnoreCase))
+                               hasEmail = true;
+                           if (string.Equals(columnName, "IsActive", StringComparison.OrdinalIgnoreCase))
+                               hasIsActive = true;
+                       }
 
-                        string storedPassword = result.ToString();
-
-                        // Try to verify as a hashed password first
-                        if (PasswordHasher.VerifyPassword(password, storedPassword))
-                            return true;
-
-                        // Fallback: Check if stored password is plain text (backward compatibility with existing accounts)
-                        if (storedPassword.Equals(password, StringComparison.Ordinal))
+                        if (!hasEmail)
                         {
-                            // Hash the password and update the database for future logins
-                            UpdatePasswordHash(username, password);
-                            return true;
+                            Console.WriteLine("EnsureSchema: Adding Users.Email column...");
+                            try
+                            {
+                               using (OleDbCommand cmd = conn.CreateCommand())
+                               {
+                                   cmd.CommandText = "ALTER TABLE Users ADD COLUMN Email TEXT(255)";
+                                   cmd.ExecuteNonQuery();
+                               }
+                               using (OleDbCommand cmd = conn.CreateCommand())
+                               {
+                                   cmd.CommandText = "UPDATE Users SET Email = Username WHERE Email IS NULL OR Email = ''";
+                                   cmd.ExecuteNonQuery();
+                               }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"EnsureSchema: Failed to add Email column or backfill: {ex.Message}");
+                            }
                         }
 
-                        return false;
+                        if (!hasIsActive)
+                        {
+                            Console.WriteLine("EnsureSchema: Adding Users.IsActive column...");
+                            try
+                            {
+                                using (OleDbCommand cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = "ALTER TABLE Users ADD COLUMN IsActive YESNO";
+                                    cmd.ExecuteNonQuery();
+                                }
+
+                                using (OleDbCommand cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = "UPDATE Users SET IsActive = True WHERE IsNull(IsActive)";
+                                    cmd.ExecuteNonQuery();
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                               Console.WriteLine($"EnsureSchema: Failed to add IsActive column or backfill: {ex.Message}");
+                            }
+                        }
+                        try
+                        {
+                            Console.WriteLine("EnsureSchema: Attempting to create unique index idxUsers_Email...");
+                            using (OleDbCommand cmd = conn.CreateCommand())
+                            {
+                                cmd.CommandText = "CREATE UNIQUE INDEX idxUsers_Email ON Users (Email)";
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                             Console.WriteLine($"EnsureSchema: Could not create unique index on Email: {ex.Message}");
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"EnsureSchema: Unexpected error: {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Login validation error: {ex.Message}");
-                return false;
-            }
-        }
 
-        private bool UpdatePasswordHash(string username, string plainPassword)
+            public bool ValidateLogin(string username, string password)
+            {
+                 try
+                 {
+                      using (OleDbConnection conn = new OleDbConnection(connectionString))
+                      {
+                          conn.Open();
+
+                           string query = "SELECT [Password], [IsActive] FROM [Users] WHERE ([Username] = @login OR [Email] = @login) AND ([RoleID] IN (" +
+                               RoleConstants.APPLICANT + ", " +
+                               RoleConstants.HR + ", " +
+                               RoleConstants.HR_MANAGER + ", " +
+                               RoleConstants.ADMIN + "))";
+
+                            using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                            {
+                                cmd.Parameters.AddWithValue("@login", loginIdentifier);
+
+                                using (OleDbDataReader reader = cmd.ExecuteReader())
+                                {
+
+                                    if (!reader.Read())
+                                        return false;
+
+                                    string storedPassword = reader["Password"]?.ToString() ?? "";
+                                    bool isActive = true;
+                                    if (reader["IsActive"] != DBNull.Value)
+                                    {
+                                        isActive = Convert.ToBoolean(reader["IsActive"]);
+                                    }
+
+                                    if (!isActive)
+                                    { 
+                                        Console.WriteLine("Account is inactive.");
+                                        return false;
+                                    }
+
+                                    // Verify hashed password
+                                    if (PasswordHasher.VerifyPassword(password, storedPassword))
+                                    return true;
+
+                                   // Fallback: plaintext -> hash migration
+                                   if (storedPassword.Equals(password, StringComparison.Ordinal))
+                                   {
+                                      // Hash the password and update the database for future logins
+                                      UpdatePasswordHashByLogin(loginIdentifier, password);
+                                      return true;
+                                   }
+
+                                   return false;
+                                }
+                            }
+                      }
+                 }
+
+                 catch (Exception ex)
+                 {
+                     Console.WriteLine($"Login validation error: {ex.Message}");
+                     return false;
+                 }
+            }
+
+        private bool UpdatePasswordHashByLogin(string loginIdentifier, string plainPassword)
         {
             try
             {
@@ -96,12 +198,12 @@ namespace HRAndApplicantSystem.Database
                     conn.Open();
 
                     string hashedPassword = PasswordHasher.HashPassword(plainPassword);
-                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @username";
+                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @login OR [Email] = @login";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@newPassword", hashedPassword);
-                        cmd.Parameters.AddWithValue("@username", username);
+                        cmd.Parameters.AddWithValue("@username", loginIdentifier);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
@@ -110,13 +212,16 @@ namespace HRAndApplicantSystem.Database
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating password hash: {ex.Message}");
+                Console.WriteLine($"Error updating password hash by login: {ex.Message}");
                 return false;
             }
         }
 
-        public bool RegisterApplicant(string username, string password)
+        public bool RegisterApplicant(string username, string password, string email)
         {
+            username = username?.Trim() ?? "";
+            email = string.IsNullOrWhiteSpace(email) ? username : email.Trim();
+
             // Check if username already exists
             if (UsernameExists(username))
             {
@@ -129,27 +234,18 @@ namespace HRAndApplicantSystem.Database
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
                     conn.Open();
-
-                    // Hash the password before storing
-                    string hashedPassword = PasswordHasher.HashPassword(password);
-
-                    // Register with RoleID = 1 (Applicant)
-                    string query = "INSERT INTO [Users] ([Username], [Password], [RoleID]) VALUES (@username, @password, @roleId)";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    string emailCheckQuery = "SELECT COUNT(*) FROM [Users] WHERE [Email] = @Email";
+                    using (OleDbCommand emailCheckCmd = new OleDbCommand(emailCheckQuery, conn))
                     {
-                        cmd.Parameters.AddWithValue("@username", username);
-                        cmd.Parameters.AddWithValue("@password", hashedPassword);
-                        cmd.Parameters.AddWithValue("@roleId", (int)UserRole.Applicant);
-
-                        int rowsAffected = cmd.ExecuteNonQuery();
-
-                        if (rowsAffected > 0)
+                        emailCheckCmd.Parameters.AddWithValue("@email", email);
+                        object result = emailCheckCmd.ExecuteScalar();
+                        int count = 0;
+                        if (result != null && result != DBNull.Value) count = Convert.ToInt32(result);
+                        if (count > 0)
                         {
-                            Console.WriteLine("Account created successfully!");
-                            return true;
+                            Console.WriteLine("Email already in use.");
+                            return false;
                         }
-                        return false;
                     }
                 }
             }
@@ -158,91 +254,36 @@ namespace HRAndApplicantSystem.Database
                 Console.WriteLine($"Error registering applicant: {ex.Message}");
                 return false;
             }
-        }
-
-        public bool UsernameExists(string username)
-        {
             try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
+            { 
+                using (OleDbConnection conn = new OleDbConnection (connectionString))
                 {
                     conn.Open();
-
-                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = @username";
-
+                    string hashedPassword = PasswordHasher.HashPassword(password);
+                    string query = "INSERT INTO [Users] ([Username], [Password], [RoleID], [Email], [IsActive]) VALUES (@username, @password, @roleID, @Email, @IsActive)";
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@username", username);
+                        cmd.Parameters.AddWithValue("@password", hashedPassword);
+                        cmd.Parameters.AddWithValue("@roleId", (int)UserRole.Applicant);
+                        cmd.Parameters.AddWithValue("@email", email);
+                        cmd.Parameters.AddWithValue("@isActive", true);
 
-                        object result = cmd.ExecuteScalar();
-
-                        if (result == null || result == DBNull.Value)
-                            return false;
-
-                        int count = Convert.ToInt32(result);
-                        return count > 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error checking username: {ex.Message}");
-                return false;
-            }
-        }
-
-        public bool SaveApplicantInfo(string username, Applicant applicant)
-        {
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-
-                    // Verify user is an applicant (RoleID = 1)
-                    int roleID = GetUserRoleByUsername(username);
-                    if (roleID != RoleConstants.APPLICANT)
-                    {
-                        Console.WriteLine("Only applicants can save applicant information.");
-                        return false;
-                    }
-
-                    // Get UserID from username
-                    int userID = GetUserIDByUsername(username);
-                    if (userID == -1)
-                    {
-                        Console.WriteLine("User not found.");
-                        return false;
-                    }
-
-                    // Check if applicant already exists for this user (by checking if we have an ApplicantID)
-                    if (applicant.ApplicantID > 0)
-                    {
-                        // Update existing applicant info
-                        return UpdateApplicantInfo(username, applicant);
-                    }
-
-                    // Insert new applicant info with UserID
-                    string query = "INSERT INTO [Applicants] ([UserID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills]) VALUES (@userID, @firstName, @lastName, @contactNo, @address, @education, @skills)";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@userID", userID);
-                        cmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
-                        cmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
-                        cmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
-                        cmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
-                        cmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
-                        cmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
 
                         int rowsAffected = cmd.ExecuteNonQuery();
-                        return rowsAffected > 0;
+
+                        if (rowsAffected > 0)
+                        {
+                           Console.WriteLine("Account created successfully!");
+                           return true;
+                        }
+                        return false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving applicant info: {ex.Message}");
+                Console.WriteLine($"Error registering applicant: {ex.Message}");
                 return false;
             }
         }
@@ -2143,22 +2184,35 @@ namespace HRAndApplicantSystem.Database
 
             return history;
         }
-        public bool ChangeUserPassword(string username, string oldPassword, string newPassword)
+        public bool ChangeUserPassword(string usernameOrEmail, string currentPassword, string newPassword)
         {
             try
             {
                 // First validate that the old password is correct
-                if (!ValidateLogin(username, oldPassword))
+                if (!ValidateLogin(usernameOrEmail, currentPassword))
                 {
                     return false;
                 }
 
-                // Password is correct, now update it
-                return UpdatePasswordHash(username, newPassword);
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string hashedNew = PasswordHasher.HashPassword(newPassword);  // Fixed typo: PaaswordHasher -> PasswordHasher
+                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @login OR [Email] = @login";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@newPassword", hashedNew);
+                        cmd.Parameters.AddWithValue("@login", usernameOrEmail);
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error changing password: {ex.Message}");
+                Console.WriteLine($"Error changing user password: {ex.Message}");
                 return false;
             }
         }
