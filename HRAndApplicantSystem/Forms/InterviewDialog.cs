@@ -9,6 +9,7 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly int _applicationID;
+        private readonly int _userRoleID;
         private string? _interviewDecision; // "For Final Review" or "Rejected"
         private TextBox? interviewNotesTextBox;
         private TextBox? scoreTextBox;
@@ -24,11 +25,12 @@ namespace HRAndApplicantSystem.Forms
         public int InterviewScore => int.TryParse(scoreTextBox?.Text.Trim(), out int score) ? Math.Clamp(score, 0, 100) : 0;
         public string InterviewResult => passRadio?.Checked == true ? "Pass" : "Fail";
 
-        public InterviewDialog(DatabaseHelper db, int applicationID)
+        public InterviewDialog(DatabaseHelper db, int applicationID, int userRoleID = 2)
         {
             InitializeComponent();
             _db = db;
             _applicationID = applicationID;
+            _userRoleID = userRoleID;
             
             InitializeDialog();
         }
@@ -221,13 +223,14 @@ namespace HRAndApplicantSystem.Forms
                 string newStatus = _interviewDecision ?? "";
 
                 // Call EvaluateInterview to properly record to InterviewEvaluations table
+                string hrRole = _db.GetRoleNameFromID(_userRoleID);
                 bool success = _db.EvaluateInterview(
                     _applicationID,
                     score,
                     result,
                     remarks,
                     newStatus,
-                    "HR Evaluator" // Can be enhanced with logged-in user later
+                    hrRole // Use actual role name
                 );
 
                 if (success)

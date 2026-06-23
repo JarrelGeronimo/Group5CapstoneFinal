@@ -22,7 +22,8 @@ namespace HRAndApplicantSystem.Infrastructure.Repositories
 
         public bool RegisterApplicant(string username, string password, string email)
         {
-            return db.RegisterApplicant(username, password, email);
+            // Note: email parameter is not used by DatabaseHelper.RegisterApplicant
+            return db.RegisterApplicant(username, password);
         }
 
         public int GetUserRoleByUsername(string username)

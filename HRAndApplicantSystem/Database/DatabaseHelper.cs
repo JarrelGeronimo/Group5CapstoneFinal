@@ -5,9 +5,6 @@ using System.Data.OleDb;
 using HRAndApplicantSystem.Models;
 using HRAndApplicantSystem.Utilities;
 using ApplicationModel = HRAndApplicantSystem.Models.Application;
-using System.Drawing.Text;
-using System.Data;
-using HRAndApplicantSystem.Infrastructure.Repositories;
 
 namespace HRAndApplicantSystem.Database
 {
@@ -39,93 +36,7 @@ namespace HRAndApplicantSystem.Database
             }
 
             connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={dbPath};Persist Security Info=False;";
-            EnsureSchema();
         }
-            private void EnsureSchema()
-            {
-                try
-                {
-                    using (OleDbConnection conn = new OleDbConnection(connectionString))
-                    {
-                       conn.Open();
-
-                       bool hasEmail = false;
-                       bool hasIsActive = false;
-
-                       DataTable columns = conn.GetSchema("Columns", new string[] { null, null, "Users", null });
-                       foreach (DataRow row in columns.Rows)
-                       {
-                           string columnName = row["COLUMN_NAME"]?.ToString() ?? "";
-                           if (string.Equals(columnName, "Email", StringComparison.OrdinalIgnoreCase))
-                               hasEmail = true;
-                           if (string.Equals(columnName, "IsActive", StringComparison.OrdinalIgnoreCase))
-                               hasIsActive = true;
-                       }
-
-                        if (!hasEmail)
-                        {
-                            Console.WriteLine("EnsureSchema: Adding Users.Email column...");
-                            try
-                            {
-                               using (OleDbCommand cmd = conn.CreateCommand())
-                               {
-                                   cmd.CommandText = "ALTER TABLE Users ADD COLUMN Email TEXT(255)";
-                                   cmd.ExecuteNonQuery();
-                               }
-                               using (OleDbCommand cmd = conn.CreateCommand())
-                               {
-                                   cmd.CommandText = "UPDATE Users SET Email = Username WHERE Email IS NULL OR Email = ''";
-                                   cmd.ExecuteNonQuery();
-                               }
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"EnsureSchema: Failed to add Email column or backfill: {ex.Message}");
-                            }
-                        }
-
-                        if (!hasIsActive)
-                        {
-                            Console.WriteLine("EnsureSchema: Adding Users.IsActive column...");
-                            try
-                            {
-                                using (OleDbCommand cmd = conn.CreateCommand())
-                                {
-                                    cmd.CommandText = "ALTER TABLE Users ADD COLUMN IsActive YESNO";
-                                    cmd.ExecuteNonQuery();
-                                }
-
-                                using (OleDbCommand cmd = conn.CreateCommand())
-                                {
-                                    cmd.CommandText = "UPDATE Users SET IsActive = True WHERE IsNull(IsActive)";
-                                    cmd.ExecuteNonQuery();
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                               Console.WriteLine($"EnsureSchema: Failed to add IsActive column or backfill: {ex.Message}");
-                            }
-                        }
-                        try
-                        {
-                            Console.WriteLine("EnsureSchema: Attempting to create unique index idxUsers_Email...");
-                            using (OleDbCommand cmd = conn.CreateCommand())
-                            {
-                                cmd.CommandText = "CREATE UNIQUE INDEX idxUsers_Email ON Users (Email)";
-                                cmd.ExecuteNonQuery();
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                             Console.WriteLine($"EnsureSchema: Could not create unique index on Email: {ex.Message}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"EnsureSchema: Unexpected error: {ex.Message}");
-                }
-            }
 
         public bool ValidateLogin(string username, string password)
         {
@@ -135,58 +46,48 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "SELECT [Password], [IsActive] FROM [Users] " +
-                                   "WHERE ([Username] = ? OR [Email] = ?) " +
-                                   "AND ([RoleID] IN (" +
-                                   RoleConstants.APPLICANT + ", " +
-                                   RoleConstants.HR + ", " +
-                                   RoleConstants.HR_MANAGER + ", " +
-                                   RoleConstants.ADMIN + "))";
+                    // Accept all valid roles
+                    string query = "SELECT [Password] FROM [Users] WHERE [Username] = @username AND ([RoleID] IN (" +
+                        RoleConstants.APPLICANT + ", " +
+                        RoleConstants.HR + ", " +
+                        RoleConstants.HR_MANAGER + ", " +
+                        RoleConstants.ADMIN + "))";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
-                        cmd.Parameters.AddWithValue("?", username);
-                        cmd.Parameters.AddWithValue("?", username);
+                        cmd.Parameters.AddWithValue("@username", username);
 
-                        using (OleDbDataReader reader = cmd.ExecuteReader())
-                        {
-                          
-                            if (!reader.Read())
-                            {
-                                MessageBox.Show("User NOT found in database");
-                                return false;
-                            }
+                        object result = cmd.ExecuteScalar();
 
-                            string storedPassword = reader["Password"]?.ToString() ?? "";
-                            bool isActive = true;
-
-                            if (reader["IsActive"] != DBNull.Value)
-                            {
-                                isActive = Convert.ToBoolean(reader["IsActive"]);
-                            }
-
-                            if (PasswordHasher.VerifyPassword(password, storedPassword))
-                                return true;
-
-                            if (storedPassword.Equals(password, StringComparison.Ordinal))
-                            {
-                                UpdatePasswordHashByLogin(username, password);
-                                return true;
-                            }
-
+                        if (result == null || result == DBNull.Value)
                             return false;
+
+                        string storedPassword = result.ToString();
+
+                        // Try to verify as a hashed password first
+                        if (PasswordHasher.VerifyPassword(password, storedPassword))
+                            return true;
+
+                        // Fallback: Check if stored password is plain text (backward compatibility with existing accounts)
+                        if (storedPassword.Equals(password, StringComparison.Ordinal))
+                        {
+                            // Hash the password and update the database for future logins
+                            UpdatePasswordHash(username, password);
+                            return true;
                         }
+
+                        return false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                Console.WriteLine($"Login validation error: {ex.Message}");
                 return false;
             }
         }
 
-        private bool UpdatePasswordHashByLogin(string loginIdentifier, string plainPassword)
+        private bool UpdatePasswordHash(string username, string plainPassword)
         {
             try
             {
@@ -195,12 +96,12 @@ namespace HRAndApplicantSystem.Database
                     conn.Open();
 
                     string hashedPassword = PasswordHasher.HashPassword(plainPassword);
-                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @login OR [Email] = @login";
+                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @username";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@newPassword", hashedPassword);
-                        cmd.Parameters.AddWithValue("@login", loginIdentifier);
+                        cmd.Parameters.AddWithValue("@username", username);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
@@ -209,40 +110,13 @@ namespace HRAndApplicantSystem.Database
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error updating password hash by login: {ex.Message}");
+                Console.WriteLine($"Error updating password hash: {ex.Message}");
                 return false;
             }
         }
 
-        public bool UsernameExists(string username)
+        public bool RegisterApplicant(string username, string password)
         {
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = @username";
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@username", username);
-                        object result = cmd.ExecuteScalar();
-                        return result != null && Convert.ToInt32(result) > 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error checking username: {ex.Message}");
-                return false;
-            }
-        }
-
-        // ✅ FIXED CODE - CREATES BOTH USERS AND APPLICANTS RECORD
-        public bool RegisterApplicant(string username, string password, string email)
-        {
-            username = username?.Trim() ?? "";
-            email = string.IsNullOrWhiteSpace(email) ? username : email.Trim();
-
             // Check if username already exists
             if (UsernameExists(username))
             {
@@ -255,92 +129,25 @@ namespace HRAndApplicantSystem.Database
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
                     conn.Open();
-                    string emailCheckQuery = "SELECT COUNT(*) FROM [Users] WHERE [Email] = @Email";
-                    using (OleDbCommand emailCheckCmd = new OleDbCommand(emailCheckQuery, conn))
-                    {
-                        emailCheckCmd.Parameters.AddWithValue("@email", email);
-                        object result = emailCheckCmd.ExecuteScalar();
-                        int count = 0;
-                        if (result != null && result != DBNull.Value) count = Convert.ToInt32(result);
-                        if (count > 0)
-                        {
-                            Console.WriteLine("Email already in use.");
-                            return false;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error registering applicant: {ex.Message}");
-                return false;
-            }
 
-            // ==================== ADD THIS NEW CODE ====================
-            int userID = -1;
-            // ========================================================
-
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
+                    // Hash the password before storing
                     string hashedPassword = PasswordHasher.HashPassword(password);
 
-                    // ==================== MODIFIED QUERY ====================
-                    // Added UserID as OUTPUT parameter to get the inserted UserID
-                    string query = "INSERT INTO [Users] ([Username], [Password], [RoleID], [Email], [IsActive]) VALUES (@username, @password, @roleID, @Email, @IsActive)";
-                    // ========================================================
+                    // Register with RoleID = 1 (Applicant)
+                    string query = "INSERT INTO [Users] ([Username], [Password], [RoleID]) VALUES (@username, @password, @roleId)";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
                         cmd.Parameters.AddWithValue("@username", username);
                         cmd.Parameters.AddWithValue("@password", hashedPassword);
                         cmd.Parameters.AddWithValue("@roleId", (int)UserRole.Applicant);
-                        cmd.Parameters.AddWithValue("@email", email);
-                        cmd.Parameters.AddWithValue("@isActive", true);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
 
                         if (rowsAffected > 0)
                         {
-                            // ==================== ADD THIS NEW CODE ====================
-                            // Get the UserID we just inserted
-                            userID = GetUserIDByUsername(username);
-
-                            if (userID == -1)
-                            {
-                                Console.WriteLine("Error: Could not retrieve UserID after registration.");
-                                return false;
-                            }
-
-                            // Now create the Applicant profile record
-                            string applicantInsertQuery = "INSERT INTO [Applicants] ([UserID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills]) VALUES (@userID, @firstName, @lastName, @contactNo, @address, @education, @skills)";
-
-                            using (OleDbCommand applicantCmd = new OleDbCommand(applicantInsertQuery, conn))
-                            {
-                                applicantCmd.Parameters.AddWithValue("@userID", userID);
-                                applicantCmd.Parameters.AddWithValue("@firstName", "");
-                                applicantCmd.Parameters.AddWithValue("@lastName", "");
-                                applicantCmd.Parameters.AddWithValue("@contactNo", "");
-                                applicantCmd.Parameters.AddWithValue("@address", "");
-                                applicantCmd.Parameters.AddWithValue("@education", "");
-                                applicantCmd.Parameters.AddWithValue("@skills", "");
-
-                                int applicantRowsAffected = applicantCmd.ExecuteNonQuery();
-
-                                if (applicantRowsAffected > 0)
-                                {
-                                    Console.WriteLine("Account created successfully!");
-                                    return true;
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Error: Could not create applicant profile.");
-                                    return false;
-                                }
-                            }
-                            // ========================================================
+                            Console.WriteLine("Account created successfully!");
+                            return true;
                         }
                         return false;
                     }
@@ -349,6 +156,93 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error registering applicant: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool UsernameExists(string username)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT COUNT(*) FROM [Users] WHERE [Username] = @username";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@username", username);
+
+                        object result = cmd.ExecuteScalar();
+
+                        if (result == null || result == DBNull.Value)
+                            return false;
+
+                        int count = Convert.ToInt32(result);
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking username: {ex.Message}");
+                return false;
+            }
+        }
+
+        public bool SaveApplicantInfo(string username, Applicant applicant)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    // Verify user is an applicant (RoleID = 1)
+                    int roleID = GetUserRoleByUsername(username);
+                    if (roleID != RoleConstants.APPLICANT)
+                    {
+                        Console.WriteLine("Only applicants can save applicant information.");
+                        return false;
+                    }
+
+                    // Get UserID from username
+                    int userID = GetUserIDByUsername(username);
+                    if (userID == -1)
+                    {
+                        Console.WriteLine("User not found.");
+                        return false;
+                    }
+
+                    // Check if applicant already exists for this user (by checking if we have an ApplicantID)
+                    if (applicant.ApplicantID > 0)
+                    {
+                        // Update existing applicant info
+                        return UpdateApplicantInfo(username, applicant);
+                    }
+
+                    // Insert new applicant info with UserID
+                    string query = "INSERT INTO [Applicants] ([UserID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills]) VALUES (@userID, @firstName, @lastName, @contactNo, @address, @education, @skills)";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userID", userID);
+                        cmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
+                        cmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
+                        cmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
+                        cmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
+                        cmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
+                        cmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
+
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error saving applicant info: {ex.Message}");
                 return false;
             }
         }
@@ -454,7 +348,6 @@ namespace HRAndApplicantSystem.Database
             return null;
         }
 
-        // ✅ FIXED CODE - CREATES IF DOESN'T EXIST, UPDATES IF IT DOES
         public bool UpdateApplicantInfo(string username, Applicant applicant)
         {
             try
@@ -471,51 +364,8 @@ namespace HRAndApplicantSystem.Database
                         return false;
                     }
 
-                    // ==================== ADD THIS NEW CODE ====================
-                    // Get UserID from username
-                    int userID = GetUserIDByUsername(username);
-                    if (userID == -1)
-                    {
-                        Console.WriteLine("Error: Could not find UserID for username: " + username);
-                        return false;
-                    }
-
-                    // Check if applicant profile exists
-                    string checkQuery = "SELECT COUNT(*) FROM [Applicants] WHERE [UserID] = @userID";
-                    int applicantExists = 0;
-                    using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
-                    {
-                        checkCmd.Parameters.AddWithValue("@userID", userID);
-                        object result = checkCmd.ExecuteScalar();
-                        applicantExists = result != null ? Convert.ToInt32(result) : 0;
-                    }
-
-                    // ========================================================
-
-                    // If applicant profile doesn't exist, CREATE it first
-                    if (applicantExists == 0)
-                    {
-                        // ==================== ADD THIS NEW CODE ====================
-                        string insertQuery = "INSERT INTO [Applicants] ([UserID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills]) VALUES (@userID, @firstName, @lastName, @contactNo, @address, @education, @skills)";
-
-                        using (OleDbCommand insertCmd = new OleDbCommand(insertQuery, conn))
-                        {
-                            insertCmd.Parameters.AddWithValue("@userID", userID);
-                            insertCmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
-                            insertCmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
-                            insertCmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
-                            insertCmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
-                            insertCmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
-                            insertCmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
-
-                            int insertRowsAffected = insertCmd.ExecuteNonQuery();
-                            return insertRowsAffected > 0;
-                        }
-                        // ========================================================
-                    }
-
-                    // If profile exists, UPDATE it
-                    string query = "UPDATE [Applicants] SET [First Name] = @firstName, [Last Name] = @lastName, [ContactNo] = @contactNo, [Address] = @address, [Education] = @education, [Skills] = @skills WHERE [UserID] = @userID";
+                    // Update using ApplicantID as the primary key
+                    string query = "UPDATE [Applicants] SET [First Name] = @firstName, [Last Name] = @lastName, [ContactNo] = @contactNo, [Address] = @address, [Education] = @education, [Skills] = @skills WHERE [ApplicantID] = @applicantId";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
@@ -525,7 +375,7 @@ namespace HRAndApplicantSystem.Database
                         cmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
                         cmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
                         cmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
-                        cmd.Parameters.AddWithValue("@userID", userID);
+                        cmd.Parameters.AddWithValue("@applicantId", applicant.ApplicantID);
 
                         int rowsAffected = cmd.ExecuteNonQuery();
                         return rowsAffected > 0;
@@ -535,7 +385,6 @@ namespace HRAndApplicantSystem.Database
             catch (Exception ex)
             {
                 Console.WriteLine($"Error updating applicant info: {ex.Message}");
-                MessageBox.Show($"Database error: {ex.Message}", "Debug Error");
                 return false;
             }
         }
@@ -1378,10 +1227,10 @@ namespace HRAndApplicantSystem.Database
                     }
 
                     // Record status history
-                    RecordStatusChange(applicationID, newStatus, $"Screened by HR: {result}", hrUsername);
+                    string screeningRole = GetRoleNameByUsername(hrUsername);
+                    RecordStatusChange(applicationID, newStatus, $"Screened by HR: {result}", screeningRole);
 
                     // Log audit trail
-                    string screeningRole = GetRoleNameByUsername(hrUsername);
                     LogAuditTrail(screeningRole, hrUsername, $"Screened Application #{applicationID} - Result: {result}");
 
                     return true;
@@ -2322,42 +2171,24 @@ namespace HRAndApplicantSystem.Database
 
             return history;
         }
-        public bool ChangeUserPassword(string usernameOrEmail, string currentPassword, string newPassword)
+        public bool ChangeUserPassword(string username, string oldPassword, string newPassword)
         {
             try
             {
                 // First validate that the old password is correct
-                if (!ValidateLogin(usernameOrEmail, currentPassword))
+                if (!ValidateLogin(username, oldPassword))
                 {
                     return false;
                 }
 
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    conn.Open();
-                    string hashedNew = PasswordHasher.HashPassword(newPassword);  // Fixed typo: PaaswordHasher -> PasswordHasher
-                    string query = "UPDATE [Users] SET [Password] = @newPassword WHERE [Username] = @login OR [Email] = @login";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
-                    {
-                        cmd.Parameters.AddWithValue("@newPassword", hashedNew);
-                        cmd.Parameters.AddWithValue("@login", usernameOrEmail);
-
-                        int rowsAffected = cmd.ExecuteNonQuery();
-                        return rowsAffected > 0;
-                    }
-                }
+                // Password is correct, now update it
+                return UpdatePasswordHash(username, newPassword);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error changing user password: {ex.Message}");
+                Console.WriteLine($"Error changing password: {ex.Message}");
                 return false;
             }
-        }
-
-        public bool SaveApplicantInfo(string username, Applicant applicant)
-        {
-            return UpdateApplicantInfo(username, applicant);
         }
 
         public bool ChangeUsername(string oldUsername, string newUsername)
@@ -3600,132 +3431,57 @@ namespace HRAndApplicantSystem.Database
 
             Console.WriteLine(new string('=', 90));
         }
-// =========================================================================
-        // ADDED METHODS FOR COMPLIANT REPORTS DASHBOARD SYSTEM
-        // =========================================================================
 
         /// <summary>
-        /// Criteria 1A: Returns a list of all applicants with detailed data
+        /// Get applicant's full name from applicant ID
         /// </summary>
-        public DataTable GetAllApplicantsDetailed()
+        public string GetApplicantFullName(int applicantID)
         {
-            DataTable dt = new DataTable();
-            string query = "SELECT ApplicantID, FirstName, LastName, ContactNo, Email, Education, Skills FROM Applicants";
-            
             try
             {
                 using (OleDbConnection conn = new OleDbConnection(connectionString))
                 {
-                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
+                    conn.Open();
+
+                    string query = @"SELECT [First Name], [Last Name] FROM [ApplicantProfiles] WHERE [ApplicantID] = @applicantID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
-                        adapter.Fill(dt);
+                        cmd.Parameters.AddWithValue("@applicantID", applicantID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            if (reader.Read())
+                            {
+                                string firstName = reader["First Name"]?.ToString() ?? "";
+                                string lastName = reader["Last Name"]?.ToString() ?? "";
+                                return $"{firstName} {lastName}".Trim();
+                            }
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in GetAllApplicantsDetailed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error getting applicant full name: {ex.Message}");
             }
-            return dt;
+
+            return "Unknown";
         }
 
         /// <summary>
-        /// Criteria 1C: Returns upcoming interview schedules across the entire workspace
+        /// Get role name from role ID
         /// </summary>
-        public DataTable GetUpcomingInterviews()
+        public string GetRoleNameFromID(int roleID)
         {
-            DataTable dt = new DataTable();
-            // Querying from Interviews table and joining Applicants and Jobs for a clear view
-            string query = @"SELECT i.InterviewID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
-                             j.JobTitle AS [Position Title], i.InterviewDate AS [Scheduled Date], i.InterviewStatus AS [Status] 
-                             FROM ((Interviews i 
-                             INNER JOIN Applications app ON i.ApplicationID = app.ApplicationID) 
-                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID) 
-                             INNER JOIN Jobs j ON app.JobID = j.JobID 
-                             WHERE i.InterviewStatus = 'Scheduled'";
-            try
+            return roleID switch
             {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
-                    {
-                        adapter.Fill(dt);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetUpcomingInterviews: {ex.Message}");
-            }
-            return dt;
-        }
-
-        /// <summary>
-        /// Criteria 1D: Returns historical trajectory logs of accepted and rejected candidates
-        /// </summary>
-        public DataTable GetHiringDecisionsHistory()
-        {
-            DataTable dt = new DataTable();
-            string query = @"SELECT app.ApplicationID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
-                             j.JobTitle AS [Job Applied], app.Status AS [Final Verdict], app.DateApplied AS [Submission Date]
-                             FROM (Applications app 
-                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID) 
-                             INNER JOIN Jobs j ON app.JobID = j.JobID 
-                             WHERE app.Status IN ('Accepted', 'Rejected')";
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
-                    {
-                        adapter.Fill(dt);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetHiringDecisionsHistory: {ex.Message}");
-            }
-            return dt;
-        }
-
-        /// <summary>
-        /// Criteria 1E: CROSS-REFERENCE COMPLIANCE METHOD
-        /// Finds applicants who have NOT submitted all required documents for their applied jobs.
-        /// </summary>
-        public DataTable GetApplicantsWithMissingRequirements()
-        {
-            DataTable dt = new DataTable();
-            
-            // This cross-references job requirement types against actual submissions 
-            // to isolate any rows with missing components or document parameters.
-            string query = @"SELECT app.ApplicationID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
-                             j.JobTitle AS [Position], jr.RequirementName AS [Missing Document Name]
-                             FROM ((Applications app
-                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID)
-                             INNER JOIN Jobs j ON app.JobID = j.JobID)
-                             INNER JOIN JobRequirements jr ON j.JobID = jr.JobID
-                             WHERE NOT EXISTS (
-                                 SELECT 1 FROM ApplicantDocuments ad 
-                                 WHERE ad.ApplicantID = app.ApplicantID 
-                                 AND ad.JobID = app.JobID 
-                                 AND ad.RequirementTypeID = jr.RequirementTypeID
-                             )";
-            try
-            {
-                using (OleDbConnection conn = new OleDbConnection(connectionString))
-                {
-                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
-                    {
-                        adapter.Fill(dt);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error in GetApplicantsWithMissingRequirements: {ex.Message}");
-            }
-            return dt;
+                1 => "Applicant",
+                2 => "HR Staff",
+                3 => "HR Manager",
+                4 => "Admin",
+                _ => "Unknown"
+            };
         }
     }
 }

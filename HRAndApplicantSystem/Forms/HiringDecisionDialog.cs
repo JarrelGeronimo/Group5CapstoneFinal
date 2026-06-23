@@ -9,16 +9,18 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly int _applicationID;
+        private readonly int _userRoleID;
         private string _hiringDecision; // "Accepted" or "Rejected"
 
         public string HiringDecision => _hiringDecision;
         public string DecisionReason => decisionReasonTextBox.Text.Trim();
 
-        public HiringDecisionDialog(DatabaseHelper db, int applicationID)
+        public HiringDecisionDialog(DatabaseHelper db, int applicationID, int userRoleID = 3)
         {
             InitializeComponent();
             _db = db;
             _applicationID = applicationID;
+            _userRoleID = userRoleID;
             
             InitializeDialog();
         }
@@ -145,7 +147,7 @@ namespace HRAndApplicantSystem.Forms
             try
             {
                 string remarks = $"Final Hiring Decision (Stage 3): {_hiringDecision}. Reason: {DecisionReason}";
-                bool success = _db.UpdateApplicationStatus(_applicationID, _hiringDecision, remarks, "Manager/Admin Decision");
+                bool success = _db.UpdateApplicationStatus(_applicationID, _hiringDecision, remarks, _db.GetRoleNameFromID(_userRoleID));
 
                 if (success)
                 {

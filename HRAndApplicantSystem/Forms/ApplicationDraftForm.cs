@@ -370,7 +370,9 @@ namespace HRAndApplicantSystem.Forms
                 try
                 {
                     System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] Updating application status from Draft to Submitted");
-                    bool success = _db.UpdateApplicationStatus(_applicationID, "Submitted", "Applicant submitted application", _applicantID.ToString());
+                    // Get applicant full name for history record
+                    string applicantFullName = _db.GetApplicantFullName(_applicantID);
+                    bool success = _db.UpdateApplicationStatus(_applicationID, "Submitted", "Submitted by applicant", applicantFullName);
                     System.Diagnostics.Debug.WriteLine($"[SubmitButton_Click] UpdateApplicationStatus returned: {success}");
                     
                     if (success)

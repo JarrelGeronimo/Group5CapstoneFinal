@@ -1,7 +1,6 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
 using ApplicationModel = HRAndApplicantSystem.Models.Application;
-using HRAndApplicantSystem.Services;
 
 namespace HRAndApplicantSystem.Forms
 {
@@ -19,7 +18,6 @@ namespace HRAndApplicantSystem.Forms
     public partial class ApplicationManagementForm : Form
     {
         private readonly DatabaseHelper _db;
-        private readonly ReportsService _reportsService;
         private readonly int _userRoleID;
         private readonly string _username;
         private string _defaultStatusFilter = "All Statuses"; // Default filter
@@ -30,8 +28,8 @@ namespace HRAndApplicantSystem.Forms
         private Button? viewApplicantButton;
         private Button? viewDocumentsButton;
         private Button? changeStatusButton;
+        private Button? viewHistoryButton;
         private Button? refreshButton;
-        private Button? reportsButton;
         private Panel? filterPanel;
         private Label? titleLabel;
         private Label? searchLabel;
@@ -42,7 +40,6 @@ namespace HRAndApplicantSystem.Forms
         {
             InitializeComponent();
             _db = db;
-            _reportsService = new ReportsService();
             _userRoleID = userRoleID;
             _username = username;
             _defaultStatusFilter = initialStatusFilter;
@@ -582,6 +579,91 @@ namespace HRAndApplicantSystem.Forms
             }
         }
 
+        private void ViewApplicationHistory()
+        {
+            if (applicationsDataGridView!.SelectedRows.Count > 0)
+            {
+                try
+                {
+                    var row = applicationsDataGridView.SelectedRows[0];
+                    int applicationId = Convert.ToInt32(row.Cells["ApplicationID"]?.Value ?? 0);
+                    string jobTitle = row.Cells["JobTitle"]?.Value?.ToString() ?? "Unknown";
+
+                    var history = _db.GetApplicationStatusHistory(applicationId);
+
+                    if (history == null || history.Count == 0)
+                    {
+                        MessageBox.Show("No status history available for this application.", "No History", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        return;
+                    }
+
+                    // Create history form
+                    Form historyForm = new Form();
+                    historyForm.Text = $"Application Status History - {jobTitle}";
+                    historyForm.Size = new System.Drawing.Size(1000, 500);
+                    historyForm.StartPosition = FormStartPosition.CenterParent;
+
+                    // Create ListView for history
+                    ListView historyListView = new ListView();
+                    historyListView.Dock = DockStyle.Fill;
+                    historyListView.View = View.Details;
+                    historyListView.FullRowSelect = true;
+                    historyListView.Padding = new Padding(10);
+
+                    // Add columns
+                    historyListView.Columns.Add("Date Changed", 180);
+                    historyListView.Columns.Add("Status", 150);
+                    historyListView.Columns.Add("Changed By", 150);
+                    historyListView.Columns.Add("Remarks", 450);
+
+                    // Add rows from history
+                    foreach (var record in history)
+                    {
+                        string dateStr = record.DateChanged != null
+                            ? ((DateTime)record.DateChanged).ToString("yyyy-MM-dd HH:mm:ss")
+                            : "N/A";
+                        string status = record.Status?.ToString() ?? "Unknown";
+                        string changedBy = record.ChangedBy?.ToString() ?? "System";
+                        string remarks = record.Remarks?.ToString() ?? "";
+
+                        ListViewItem item = new ListViewItem(dateStr);
+                        item.SubItems.Add(status);
+                        item.SubItems.Add(changedBy);
+                        item.SubItems.Add(remarks);
+                        historyListView.Items.Add(item);
+                    }
+
+                    historyForm.Controls.Add(historyListView);
+
+                    // Add close button
+                    Panel buttonPanel = new Panel();
+                    buttonPanel.Height = 50;
+                    buttonPanel.Dock = DockStyle.Bottom;
+                    buttonPanel.BackColor = System.Drawing.Color.WhiteSmoke;
+                    buttonPanel.Padding = new Padding(10);
+
+                    Button closeButton = new Button();
+                    closeButton.Text = "Close";
+                    closeButton.Size = new System.Drawing.Size(100, 35);
+                    closeButton.Location = new System.Drawing.Point(890, 10);
+                    closeButton.Click += (s, e) => historyForm.Close();
+                    buttonPanel.Controls.Add(closeButton);
+
+                    historyForm.Controls.Add(buttonPanel);
+
+                    historyForm.ShowDialog(this);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Please select an application first.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
         private void ChangeStatus()
         {
             if (applicationsDataGridView!.SelectedRows.Count > 0)
@@ -610,7 +692,8 @@ namespace HRAndApplicantSystem.Forms
                             if (currentStatus == "Submitted")
                             {
                                 System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Changing status from 'Submitted' to 'Under Review'");
-                                _db.UpdateApplicationStatus(applicationId, "Under Review", "HR started reviewing application", _userRoleID.ToString());
+                                string hrRole = _db.GetRoleNameFromID(_userRoleID);
+                                _db.UpdateApplicationStatus(applicationId, "Under Review", "HR started reviewing application", hrRole);
                             }
                             
                             using (ApplicationReviewDialog dialog = new ApplicationReviewDialog(_db, applicationId, _username))
@@ -639,7 +722,7 @@ namespace HRAndApplicantSystem.Forms
                         case "Interview Scheduled":
                             // Stage 2b: Evaluate Interview (HR Staff, Manager, Admin can do)
                             System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening InterviewDialog for evaluation");
-                            using (InterviewDialog dialog = new InterviewDialog(_db, applicationId))
+                            using (InterviewDialog dialog = new InterviewDialog(_db, applicationId, _userRoleID))
                             {
                                 result = dialog.ShowDialog(this);
                                 newStatus = dialog.InterviewDecision;
@@ -652,7 +735,7 @@ namespace HRAndApplicantSystem.Forms
                             if (_userRoleID == 3 || _userRoleID == 4) // HR_MANAGER or ADMIN
                             {
                                 System.Diagnostics.Debug.WriteLine($"[ChangeStatus] Opening HiringDecisionDialog for final review");
-                                using (HiringDecisionDialog dialog = new HiringDecisionDialog(_db, applicationId))
+                                using (HiringDecisionDialog dialog = new HiringDecisionDialog(_db, applicationId, _userRoleID))
                                 {
                                     result = dialog.ShowDialog(this);
                                     newStatus = dialog.HiringDecision;
@@ -721,143 +804,9 @@ namespace HRAndApplicantSystem.Forms
         private void ViewApplicantButton_Click(object? sender, EventArgs? e) => ViewApplicantProfile();
         private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
         private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
-        private void ReportsButton_Click(object? sender, EventArgs? e)
-        {
-        ShowReportsDashboard();
-        }
+        private void ViewHistoryButton_Click(object? sender, EventArgs? e) => ViewApplicationHistory();
         private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
 
-        private void ShowReportsDashboard()
-{
-    try
-    {
-        // 1. Fetch backend calculation summaries for high-level metrics
-        var appMetrics = _reportsService.GetApplicationMetricsData();
-        var interviewMetrics = _reportsService.GetInterviewMetricsData();
-        var hireMetrics = _reportsService.GetTimeToHireMetricsData();
-        var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
-
-        // 2. Generate a custom container window for organized UI presentation (Criteria 3)
-        Form reportsForm = new Form();
-        reportsForm.Text = "HR Analytics & Operational Reports Dashboard";
-        reportsForm.Size = new System.Drawing.Size(1000, 700);
-        reportsForm.StartPosition = FormStartPosition.CenterScreen;
-        reportsForm.BackColor = System.Drawing.Color.White;
-
-        // Visual header panel showing executive summary calculations
-        Panel summaryPanel = new Panel() { Dock = DockStyle.Top, Height = 120, BackColor = System.Drawing.Color.FromArgb(240, 244, 248) };
-        Label lblSummary = new Label()
-        {
-            Text = $"📈 SUMMARY METRICS:  Total Apps: {appMetrics?.TotalApplications ?? 0}  |  " +
-                   $"Interviews: {interviewMetrics?.TotalInterviews ?? 0} (Pass Rate: {interviewMetrics?.PassRate ?? 0}%)  |  " +
-                   $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0} (Offer: {decisionMetrics?.OfferRate ?? 0}% / Reject: {decisionMetrics?.RejectionRate ?? 0}%)",
-            Font = new Font("Segoe UI", 10, FontStyle.Bold),
-            ForeColor = System.Drawing.Color.FromArgb(30, 41, 59),
-            Dock = DockStyle.Fill,
-            TextAlign = ContentAlignment.MiddleCenter
-        };
-        summaryPanel.Controls.Add(lblSummary);
-        reportsForm.Controls.Add(summaryPanel);
-
-        // TabControl layout grouping each specific item explicitly asked by the Rubric (Criteria 1)
-        TabControl tabControl = new TabControl() { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9) };
-        string[] reportTypes = { "Applicant List", "Pending Applications", "Interviews Schedule", "Accepted-Rejected", "Missing Requirements" };
-
-        foreach (string type in reportTypes)
-        {
-            TabPage tabPage = new TabPage(type);
-            DataGridView dgv = new DataGridView()
-            {
-                Dock = DockStyle.Fill,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                BackgroundColor = System.Drawing.Color.White,
-                ReadOnly = true,
-                AllowUserToAddRows = false
-            };
-
-            // Bind your persistent data sets according to current selected report type (Criteria 1)
-            if (type == "Applicant List") dgv.DataSource = _db.GetAllApplicantsDetailed(); 
-            else if (type == "Pending Applications") 
-            {
-                // Kukunin ang mga aplikasyon at sasalain kung Submitted o Under Review (Pending)
-                var pendingList = _db.GetAllApplications()?
-                         .Where(a => a.Status == "Submitted" || a.Status == "Under Review")
-                         .ToList();
-                dgv.DataSource = pendingList;
-            }
-            else if (type == "Interviews Schedule") dgv.DataSource = _db.GetUpcomingInterviews();
-            else if (type == "Accepted-Rejected") dgv.DataSource = _db.GetHiringDecisionsHistory();
-            else if (type == "Missing Requirements") dgv.DataSource = _db.GetApplicantsWithMissingRequirements();
-
-            tabPage.Controls.Add(dgv);
-            tabControl.Controls.Add(tabPage);
-        }
-        reportsForm.Controls.Add(tabControl);
-
-        // Base execution panel grouping functional user controls
-        Panel bottomPanel = new Panel() { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.WhiteSmoke };
-        
-        // CSV Export Engine enabling file saving operations (Criteria 2)
-        Button btnExport = new Button()
-        {
-            Text = "📥 Export Selected Report (CSV)",
-            Size = new System.Drawing.Size(240, 38),
-            Location = new System.Drawing.Point(15, 10),
-            BackColor = System.Drawing.Color.FromArgb(34, 139, 34),
-            ForeColor = System.Drawing.Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Font = new Font("Segoe UI", 9, FontStyle.Bold)
-        };
-        
-        btnExport.Click += (s, e) =>
-        {
-            TabPage activeTab = tabControl.SelectedTab;
-            DataGridView currentGrid = activeTab.Controls.OfType<DataGridView>().FirstOrDefault();
-            
-            if (currentGrid != null && currentGrid.Rows.Count > 0)
-            {
-                using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "CSV Files (*.csv)|*.csv", FileName = $"{activeTab.Text.Replace(" ", "_")}_Report.csv" })
-                {
-                    if (sfd.ShowDialog() == DialogResult.OK)
-                    {
-                        try
-                        {
-                            var lines = new List<string>();
-                            var headers = currentGrid.Columns.Cast<DataGridViewColumn>().Select(x => x.HeaderText);
-                            lines.Add(string.Join(",", headers));
-
-                            foreach (DataGridViewRow row in currentGrid.Rows)
-                            {
-                                var cells = row.Cells.Cast<DataGridViewCell>().Select(x => $"\"{x.Value?.ToString().Replace("\"", "\"\"")}\"");
-                                lines.Add(string.Join(",", cells));
-                            }
-
-                            System.IO.File.WriteAllLines(sfd.FileName, lines, System.Text.Encoding.UTF8);
-                            MessageBox.Show("Report exported successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        }
-                        catch (Exception ex) { MessageBox.Show($"Export action failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                    }
-                }
-            }
-            else { MessageBox.Show("No data records available to export inside this subset.", "Export Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-        };
-
-        Button btnClose = new Button() { Text = "Close Menu", Size = new System.Drawing.Size(120, 38), Location = new System.Drawing.Point(850, 10), FlatStyle = FlatStyle.Flat };
-        btnClose.Click += (s, e) => reportsForm.Close();
-
-        bottomPanel.Controls.Add(btnExport);
-        bottomPanel.Controls.Add(btnClose);
-        reportsForm.Controls.Add(bottomPanel);
-
-        // Render runtime instance window
-        reportsForm.ShowDialog();
-    }
-    catch (Exception ex)
-    {
-        MessageBox.Show($"System encountered issues processing structural report: {ex.Message}", "Error Handler Trace", MessageBoxButtons.OK, MessageBoxIcon.Error);
-    }
-}
-        
         private void InitializeComponent()
         {
             applicationsDataGridView = new DataGridView();
@@ -869,8 +818,8 @@ namespace HRAndApplicantSystem.Forms
             viewApplicantButton = new Button();
             viewDocumentsButton = new Button();
             changeStatusButton = new Button();
+            viewHistoryButton = new Button();
             refreshButton = new Button();
-            reportsButton = new Button();
             closeButton = new Button();
             statusLabel = new Label();
             ((System.ComponentModel.ISupportInitialize)applicationsDataGridView).BeginInit();
@@ -945,13 +894,13 @@ namespace HRAndApplicantSystem.Forms
             buttonPanel.Controls.Add(viewApplicantButton);
             buttonPanel.Controls.Add(viewDocumentsButton);
             buttonPanel.Controls.Add(changeStatusButton);
+            buttonPanel.Controls.Add(viewHistoryButton);
             buttonPanel.Controls.Add(refreshButton);
-            buttonPanel.Controls.Add(reportsButton);
             buttonPanel.Controls.Add(closeButton);
             buttonPanel.Location = new Point(11, 87);
             buttonPanel.Margin = new Padding(3, 4, 3, 4);
             buttonPanel.Name = "buttonPanel";
-            buttonPanel.Size = new Size(1143, 53);
+            buttonPanel.Size = new Size(1250, 53);
             buttonPanel.TabIndex = 3;
             // 
             // viewApplicantButton
@@ -996,38 +945,40 @@ namespace HRAndApplicantSystem.Forms
             changeStatusButton.UseVisualStyleBackColor = false;
             changeStatusButton.Click += ChangeStatusButton_Click;
             // 
+            // viewHistoryButton
+            // 
+            viewHistoryButton.BackColor = Color.FromArgb(0, 102, 204);
+            viewHistoryButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            viewHistoryButton.ForeColor = Color.White;
+            viewHistoryButton.Location = new Point(383, 0);
+            viewHistoryButton.Margin = new Padding(3, 4, 3, 4);
+            viewHistoryButton.Name = "viewHistoryButton";
+            viewHistoryButton.Size = new Size(100, 40);
+            viewHistoryButton.TabIndex = 3;
+            viewHistoryButton.Text = "View History";
+            viewHistoryButton.UseVisualStyleBackColor = false;
+            viewHistoryButton.Click += ViewHistoryButton_Click;
+            // 
             // refreshButton
             // 
             refreshButton.BackColor = Color.FromArgb(107, 142, 35);
             refreshButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             refreshButton.ForeColor = Color.White;
-            refreshButton.Location = new Point(383, 0);
+            refreshButton.Location = new Point(489, 0);
             refreshButton.Margin = new Padding(3, 4, 3, 4);
             refreshButton.Name = "refreshButton";
             refreshButton.Size = new Size(91, 40);
-            refreshButton.TabIndex = 3;
+            refreshButton.TabIndex = 4;
             refreshButton.Text = "Refresh";
             refreshButton.UseVisualStyleBackColor = false;
             refreshButton.Click += RefreshButton_Click;
-            // reportsButton
-            reportsButton.BackColor = Color.FromArgb(70, 130, 180);
-            reportsButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            reportsButton.ForeColor = Color.White;
-            reportsButton.Location = new Point(480, 0);
-            reportsButton.Margin = new Padding(3, 4, 3, 4);
-            reportsButton.Name = "reportsButton";
-            reportsButton.Size = new Size(120, 40);
-            reportsButton.TabIndex = 4;
-            reportsButton.Text = "Reports";
-            reportsButton.UseVisualStyleBackColor = false;
-            reportsButton.Click += ReportsButton_Click;
             // 
             // closeButton
             // 
             closeButton.BackColor = Color.FromArgb(128, 128, 128);
             closeButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             closeButton.ForeColor = Color.White;
-            closeButton.Location = new Point(610, 0);
+            closeButton.Location = new Point(595, 0);
             closeButton.Margin = new Padding(3, 4, 3, 4);
             closeButton.Name = "closeButton";
             closeButton.Size = new Size(91, 40);

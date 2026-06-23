@@ -210,6 +210,19 @@ namespace HRAndApplicantSystem.Forms
             profileButton.Click += (s, e) => ViewEditApplicantProfile();
             contentPanel.Controls.Add(profileButton);
 
+            // Quick action panel - Change Credentials
+            Button changeCredentialsButton = new Button();
+            changeCredentialsButton.Text = "Change Username\nor Password";
+            changeCredentialsButton.Size = new System.Drawing.Size(300, 100);
+            changeCredentialsButton.BackColor = System.Drawing.Color.FromArgb(184, 134, 11);
+            changeCredentialsButton.ForeColor = System.Drawing.Color.White;
+            changeCredentialsButton.Font = new Font("Arial", 12, FontStyle.Bold);
+            changeCredentialsButton.Cursor = Cursors.Hand;
+            changeCredentialsButton.Margin = new Padding(10);
+            changeCredentialsButton.FlatStyle = FlatStyle.Flat;
+            changeCredentialsButton.Click += (s, e) => ChangeCredentials();
+            contentPanel.Controls.Add(changeCredentialsButton);
+
             // Logout button
             Button logoutButton = new Button();
             logoutButton.Text = "Logout";
@@ -314,19 +327,7 @@ namespace HRAndApplicantSystem.Forms
             reportsButton.Cursor = Cursors.Hand;
             reportsButton.Margin = new Padding(10);
             reportsButton.FlatStyle = FlatStyle.Flat;
-            reportsButton.Click += (s, e) => 
-            {
-                try
-                {
-                    ApplicationManagementForm form = new ApplicationManagementForm(_db, _currentUser.RoleID, "All Statuses", _currentUser.Username);
-                    form.ShowDialog(this);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error opening reports management: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            };
-            
+            reportsButton.Click += (s, e) => MessageBox.Show("Reports feature coming soon", "Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
             contentPanel.Controls.Add(reportsButton);
 
             // Logout button
@@ -474,7 +475,7 @@ namespace HRAndApplicantSystem.Forms
                 // Create details form
                 Form detailsForm = new Form();
                 detailsForm.Text = $"Application Details - {appDetails.JobTitle}";
-                detailsForm.Size = new System.Drawing.Size(800, 900);
+                detailsForm.Size = new System.Drawing.Size(800, 650);
                 detailsForm.StartPosition = FormStartPosition.CenterParent;
                 detailsForm.AutoScroll = true;
 
@@ -778,7 +779,10 @@ namespace HRAndApplicantSystem.Forms
                             try
                             {
                                 // Update status from Draft to Submitted
-                                bool success = _db.UpdateApplicationStatus(applicationID, ApplicationStatus.Submitted, "Submitted by applicant", _username);
+                                // Get applicant full name for the history record
+                                var applicantInfo = _db.GetApplicantByUsername(_username);
+                                string applicantFullName = applicantInfo != null ? $"{applicantInfo.FirstName} {applicantInfo.LastName}".Trim() : _username;
+                                bool success = _db.UpdateApplicationStatus(applicationID, ApplicationStatus.Submitted, "Submitted by applicant", applicantFullName);
                                 if (success)
                                 {
                                     MessageBox.Show("Application submitted successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -811,6 +815,16 @@ namespace HRAndApplicantSystem.Forms
                     bottomPanel.Controls.Add(readOnlyLabel);
                 }
 
+                Button historyButton = new Button();
+                historyButton.Text = "View History";
+                historyButton.Size = new System.Drawing.Size(120, 35);
+                historyButton.Location = new System.Drawing.Point(560, 10);
+                historyButton.BackColor = System.Drawing.Color.FromArgb(0, 120, 215);
+                historyButton.ForeColor = System.Drawing.Color.White;
+                historyButton.Font = new Font("Arial", 10, FontStyle.Bold);
+                historyButton.Click += (s, e) => ShowApplicationStatusHistory(applicationID);
+                bottomPanel.Controls.Add(historyButton);
+
                 Button closeButton = new Button();
                 closeButton.Text = "Close";
                 closeButton.Size = new System.Drawing.Size(100, 35);
@@ -828,6 +842,80 @@ namespace HRAndApplicantSystem.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Error displaying application details: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowApplicationStatusHistory(int applicationID)
+        {
+            try
+            {
+                var history = _db.GetApplicationStatusHistory(applicationID);
+                
+                if (history == null || history.Count == 0)
+                {
+                    MessageBox.Show("No status history available for this application.", "No History", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // Create history form
+                Form historyForm = new Form();
+                historyForm.Text = $"Application Status History - Application #{applicationID}";
+                historyForm.Size = new System.Drawing.Size(900, 500);
+                historyForm.StartPosition = FormStartPosition.CenterParent;
+
+                // Create ListView for history
+                ListView historyListView = new ListView();
+                historyListView.Dock = DockStyle.Fill;
+                historyListView.View = View.Details;
+                historyListView.FullRowSelect = true;
+                historyListView.Padding = new Padding(10);
+
+                // Add columns
+                historyListView.Columns.Add("Date Changed", 150);
+                historyListView.Columns.Add("Status", 150);
+                historyListView.Columns.Add("Changed By", 150);
+                historyListView.Columns.Add("Remarks", 350);
+
+                // Add rows from history
+                foreach (var record in history)
+                {
+                    string dateStr = record.DateChanged != null 
+                        ? ((DateTime)record.DateChanged).ToString("yyyy-MM-dd HH:mm") 
+                        : "N/A";
+                    string status = record.Status?.ToString() ?? "Unknown";
+                    string changedBy = record.ChangedBy?.ToString() ?? "System";
+                    string remarks = record.Remarks?.ToString() ?? "";
+
+                    ListViewItem item = new ListViewItem(dateStr);
+                    item.SubItems.Add(status);
+                    item.SubItems.Add(changedBy);
+                    item.SubItems.Add(remarks);
+                    historyListView.Items.Add(item);
+                }
+
+                historyForm.Controls.Add(historyListView);
+
+                // Add close button
+                Panel buttonPanel = new Panel();
+                buttonPanel.Height = 50;
+                buttonPanel.Dock = DockStyle.Bottom;
+                buttonPanel.BackColor = System.Drawing.Color.WhiteSmoke;
+                buttonPanel.Padding = new Padding(10);
+
+                Button closeButton = new Button();
+                closeButton.Text = "Close";
+                closeButton.Size = new System.Drawing.Size(100, 35);
+                closeButton.Location = new System.Drawing.Point(790, 10);
+                closeButton.Click += (s, e) => historyForm.Close();
+                buttonPanel.Controls.Add(closeButton);
+
+                historyForm.Controls.Add(buttonPanel);
+
+                historyForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading status history: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1120,6 +1208,23 @@ namespace HRAndApplicantSystem.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Error opening applications: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ChangeCredentials()
+        {
+            try
+            {
+                ChangeCredentialsDialog dialog = new ChangeCredentialsDialog(_username);
+                if (dialog.ShowDialog(this) == DialogResult.OK)
+                {
+                    MessageBox.Show("Your credentials have been updated. Please log in again with your new credentials.", "Update Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LogoutUser();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error changing credentials: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

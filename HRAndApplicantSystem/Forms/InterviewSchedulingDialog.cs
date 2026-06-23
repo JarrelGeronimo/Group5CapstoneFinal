@@ -208,13 +208,14 @@ namespace HRAndApplicantSystem.Forms
                 DateTime fullDateTime = ScheduledDate.Date.Add(TimeSpan.Parse(ScheduledTime));
 
                 // Call ScheduleInterview which properly records to InterviewSchedules table
+                // Note: We don't have access to role ID here, so we use "HR Staff" as default
                 bool success = _db.ScheduleInterview(
                     _applicationID,
                     fullDateTime,
                     "HR Staff", // Interviewer name - can be enhanced with logged-in user later
                     InterviewMode,
                     Location,
-                    "HR Scheduling" // Scheduled by
+                    "HR Staff" // Scheduled by - using consistent role name
                 );
 
                 if (success)
