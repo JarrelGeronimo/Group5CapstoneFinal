@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
 using ApplicationModel = HRAndApplicantSystem.Models.Application;
+using HRAndApplicantSystem.Services;
 
 namespace HRAndApplicantSystem.Forms
 {
@@ -18,6 +19,7 @@ namespace HRAndApplicantSystem.Forms
     public partial class ApplicationManagementForm : Form
     {
         private readonly DatabaseHelper _db;
+        private readonly ReportsService _reportsService;
         private readonly int _userRoleID;
         private readonly string _username;
         private string _defaultStatusFilter = "All Statuses"; // Default filter
@@ -30,6 +32,7 @@ namespace HRAndApplicantSystem.Forms
         private Button? changeStatusButton;
         private Button? viewHistoryButton;
         private Button? refreshButton;
+        private Button? reportsButton;
         private Panel? filterPanel;
         private Label? titleLabel;
         private Label? searchLabel;
@@ -40,6 +43,7 @@ namespace HRAndApplicantSystem.Forms
         {
             InitializeComponent();
             _db = db;
+            _reportsService = new ReportsService();
             _userRoleID = userRoleID;
             _username = username;
             _defaultStatusFilter = initialStatusFilter;
@@ -805,8 +809,39 @@ namespace HRAndApplicantSystem.Forms
         private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
         private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
         private void ViewHistoryButton_Click(object? sender, EventArgs? e) => ViewApplicationHistory();
+        private void ReportsButton_Click(object? sender, EventArgs? e)
+        {
+            ShowReportsDashboard();
+        }
         private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
 
+        private void ShowReportsDashboard()
+        {
+            var appMetrics = _reportsService.GetApplicationMetricsData();
+            var interviewMetrics = _reportsService.GetInterviewMetricsData();
+            var hireMetrics = _reportsService.GetTimeToHireMetricsData();
+            var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
+
+            string report =
+                 $"APPLICATION REPORTS\n\n" +
+
+                $"Total Applications: {appMetrics?.TotalApplications ?? 0}\n\n" +
+
+                $"Total Interviews: {interviewMetrics?.TotalInterviews ?? 0}\n" +
+                $"Pass Rate: {interviewMetrics?.PassRate ?? 0}%\n\n" +
+
+                $"Average Time To Hire: {hireMetrics?.AverageDaysToHire ?? 0} days\n\n" +
+
+                $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0}\n" +
+                $"Offer Rate: {decisionMetrics?.OfferRate ?? 0}%\n" +
+                $"Rejection Rate: {decisionMetrics?.RejectionRate ?? 0}%";
+
+            MessageBox.Show(
+                report,
+                "Reports Dashboard",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+    }
         private void InitializeComponent()
         {
             applicationsDataGridView = new DataGridView();
@@ -820,6 +855,7 @@ namespace HRAndApplicantSystem.Forms
             changeStatusButton = new Button();
             viewHistoryButton = new Button();
             refreshButton = new Button();
+            reportsButton = new Button();
             closeButton = new Button();
             statusLabel = new Label();
             ((System.ComponentModel.ISupportInitialize)applicationsDataGridView).BeginInit();
@@ -896,6 +932,7 @@ namespace HRAndApplicantSystem.Forms
             buttonPanel.Controls.Add(changeStatusButton);
             buttonPanel.Controls.Add(viewHistoryButton);
             buttonPanel.Controls.Add(refreshButton);
+            buttonPanel.Controls.Add(reportsButton);
             buttonPanel.Controls.Add(closeButton);
             buttonPanel.Location = new Point(11, 87);
             buttonPanel.Margin = new Padding(3, 4, 3, 4);
@@ -973,12 +1010,24 @@ namespace HRAndApplicantSystem.Forms
             refreshButton.UseVisualStyleBackColor = false;
             refreshButton.Click += RefreshButton_Click;
             // 
+            // reportsButton
+            reportsButton.BackColor = Color.FromArgb(70, 130, 180);
+            reportsButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            reportsButton.ForeColor = Color.White;
+            reportsButton.Location = new Point(480, 0);
+            reportsButton.Margin = new Padding(3, 4, 3, 4);
+            reportsButton.Name = "reportsButton";
+            reportsButton.Size = new Size(120, 40);
+            reportsButton.TabIndex = 4;
+            reportsButton.Text = "Reports";
+            reportsButton.UseVisualStyleBackColor = false;
+            reportsButton.Click += ReportsButton_Click;
             // closeButton
             // 
             closeButton.BackColor = Color.FromArgb(128, 128, 128);
             closeButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             closeButton.ForeColor = Color.White;
-            closeButton.Location = new Point(595, 0);
+            closeButton.Location = new Point(610, 0);
             closeButton.Margin = new Padding(3, 4, 3, 4);
             closeButton.Name = "closeButton";
             closeButton.Size = new Size(91, 40);
