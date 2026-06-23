@@ -809,39 +809,225 @@ namespace HRAndApplicantSystem.Forms
         private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
         private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
         private void ViewHistoryButton_Click(object? sender, EventArgs? e) => ViewApplicationHistory();
-        private void ReportsButton_Click(object? sender, EventArgs? e)
+        private void ReportsButton_Click(object sender, EventArgs e)
         {
             ShowReportsDashboard();
         }
-        private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
-
+        // =========================================================================
+        // SPECIAL REPORTS ENGINE: EXPORTS CSV AND PRINTS TO PHYSICAL/PDF PRINTERS
+        // =========================================================================
         private void ShowReportsDashboard()
         {
-            var appMetrics = _reportsService.GetApplicationMetricsData();
-            var interviewMetrics = _reportsService.GetInterviewMetricsData();
-            var hireMetrics = _reportsService.GetTimeToHireMetricsData();
-            var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
+            try
+            {
+                // 1. Fetch backend calculation summaries for high-level metrics
+                var appMetrics = _reportsService.GetApplicationMetricsData();
+                var interviewMetrics = _reportsService.GetInterviewMetricsData();
+                var hireMetrics = _reportsService.GetTimeToHireMetricsData();
+                var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
 
-            string report =
-                 $"APPLICATION REPORTS\n\n" +
+                // 2. Generate custom window canvas framework
+                Form reportsForm = new Form();
+                reportsForm.Text = "HR Analytics & Operational Reports Dashboard";
+                reportsForm.Size = new System.Drawing.Size(1000, 700);
+                reportsForm.StartPosition = FormStartPosition.CenterScreen;
+                reportsForm.BackColor = System.Drawing.Color.White;
 
-                $"Total Applications: {appMetrics?.TotalApplications ?? 0}\n\n" +
+                // Visual header panel displaying calculations
+                Panel summaryPanel = new Panel() { Dock = DockStyle.Top, Height = 120, BackColor = System.Drawing.Color.FromArgb(240, 244, 248) };
+                Label lblSummary = new Label()
+                {
+                    Text = $"📈 SUMMARY METRICS:  Total Apps: {appMetrics?.TotalApplications ?? 0}  |  " +
+                           $"Interviews: {interviewMetrics?.TotalInterviews ?? 0} (Pass Rate: {interviewMetrics?.PassRate ?? 0}%)  |  " +
+                           $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0} (Offer: {decisionMetrics?.OfferRate ?? 0}% / Reject: {decisionMetrics?.RejectionRate ?? 0}%)",
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    ForeColor = System.Drawing.Color.FromArgb(30, 41, 59),
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                summaryPanel.Controls.Add(lblSummary);
+                reportsForm.Controls.Add(summaryPanel);
 
-                $"Total Interviews: {interviewMetrics?.TotalInterviews ?? 0}\n" +
-                $"Pass Rate: {interviewMetrics?.PassRate ?? 0}%\n\n" +
+                // TabControl canvas sorting explicit report types required by rubric criteria
+                TabControl tabControl = new TabControl() { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9) };
+                string[] reportTypes = { "Applicant List", "Pending Applications", "Interviews Schedule", "Accepted-Rejected", "Missing Requirements" };
 
-                $"Average Time To Hire: {hireMetrics?.AverageDaysToHire ?? 0} days\n\n" +
+                foreach (string type in reportTypes)
+                {
+                    TabPage tabPage = new TabPage(type);
+                    DataGridView dgv = new DataGridView()
+                    {
+                        Dock = DockStyle.Fill,
+                        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                        BackgroundColor = System.Drawing.Color.White,
+                        ReadOnly = true,
+                        AllowUserToAddRows = false
+                    };
 
-                $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0}\n" +
-                $"Offer Rate: {decisionMetrics?.OfferRate ?? 0}%\n" +
-                $"Rejection Rate: {decisionMetrics?.RejectionRate ?? 0}%";
+                    // Bind internal functional record data sets securely
+                    if (type == "Applicant List") dgv.DataSource = _db.GetAllApplicantsDetailed(); 
+                    else if (type == "Pending Applications") 
+                    {
+                        var allApps = _db.GetAllApplications();
+                        if (allApps != null)
+                        {
+                            dgv.DataSource = allApps
+                                .Where(a => a.Status == "Submitted" || a.Status == "Under Review" || a.Status == "Pending")
+                                .ToList();
+                        }
+                    }
+                    else if (type == "Interviews Schedule") dgv.DataSource = _db.GetUpcomingInterviews();
+                    else if (type == "Accepted-Rejected") dgv.DataSource = _db.GetHiringDecisionsHistory();
+                    else if (type == "Missing Requirements") dgv.DataSource = _db.GetApplicantsWithMissingRequirements();
 
-            MessageBox.Show(
-                report,
-                "Reports Dashboard",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-    }
+                    tabPage.Controls.Add(dgv);
+                    tabControl.Controls.Add(tabPage);
+                }
+                reportsForm.Controls.Add(tabControl);
+
+                // Base management operations ribbon containing functional user buttons
+                Panel bottomPanel = new Panel() { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.WhiteSmoke };
+                
+                // CRITERIA #2: CSV File System Export Engine
+                Button btnExport = new Button()
+                {
+                    Text = "📥 Export Report (CSV)",
+                    Size = new System.Drawing.Size(180, 38),
+                    Location = new System.Drawing.Point(15, 10),
+                    BackColor = System.Drawing.Color.FromArgb(34, 139, 34), // Forest Green
+                    ForeColor = System.Drawing.Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                };
+                
+                btnExport.Click += (s, e) =>
+                {
+                    TabPage activeTab = tabControl.SelectedTab;
+                    DataGridView currentGrid = activeTab.Controls.OfType<DataGridView>().FirstOrDefault();
+                    
+                    if (currentGrid != null && currentGrid.Rows.Count > 0)
+                    {
+                        using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "CSV Files (*.csv)|*.csv", FileName = $"{activeTab.Text.Replace(" ", "_")}_Report.csv" })
+                        {
+                            if (sfd.ShowDialog() == DialogResult.OK)
+                            {
+                                try
+                                {
+                                    var lines = new List<string>();
+                                    var headers = currentGrid.Columns.Cast<DataGridViewColumn>().Select(x => x.HeaderText);
+                                    lines.Add(string.Join(",", headers));
+
+                                    foreach (DataGridViewRow row in currentGrid.Rows)
+                                    {
+                                        var cells = row.Cells.Cast<DataGridViewCell>().Select(x => $"\"{x.Value?.ToString().Replace("\"", "\"\"")}\"");
+                                        lines.Add(string.Join(",", cells));
+                                    }
+
+                                    System.IO.File.WriteAllLines(sfd.FileName, lines, System.Text.Encoding.UTF8);
+                                    MessageBox.Show("Report dataset saved successfully!", "Success Trace", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                }
+                                catch (Exception ex) { MessageBox.Show($"File export action failed: {ex.Message}", "Error Handler", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                            }
+                        }
+                    }
+                    else { MessageBox.Show("No active rows inside this grid subset to run export rules.", "System Alert", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                };
+
+                // CRITERIA #2: Document Printer & PDF Rendering Engine
+                Button btnPrint = new Button()
+                {
+                    Text = "🖨️ Print / Save as PDF",
+                    Size = new System.Drawing.Size(180, 38),
+                    Location = new System.Drawing.Point(210, 10), // Placed perfectly beside the Export button
+                    BackColor = System.Drawing.Color.FromArgb(70, 130, 180), // Steel Blue
+                    ForeColor = System.Drawing.Color.White,
+                    FlatStyle = FlatStyle.Flat,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
+                };
+
+                btnPrint.Click += (s, e) =>
+                {
+                    TabPage activeTab = tabControl.SelectedTab;
+                    DataGridView currentGrid = activeTab.Controls.OfType<DataGridView>().FirstOrDefault();
+
+                    if (currentGrid != null && currentGrid.Rows.Count > 0)
+                    {
+                        System.Drawing.Printing.PrintDocument printDoc = new System.Drawing.Printing.PrintDocument();
+                        printDoc.DocumentName = $"{activeTab.Text} Operational Report";
+                        
+                        // Converts active window DataGridView collection data into physical document matrix rules
+                        printDoc.PrintPage += (senderDoc, pageEvt) =>
+                        {
+                            int x = 30, y = 40;
+                            int cellHeight = 30;
+                            Font titleFont = new Font("Segoe UI", 16, FontStyle.Bold);
+                            Font headerFont = new Font("Segoe UI", 9, FontStyle.Bold);
+                            Font dataFont = new Font("Segoe UI", 9);
+
+                            // Title Banner Rendering
+                            pageEvt.Graphics.DrawString($"HR Information Subsystem: {activeTab.Text}", titleFont, Brushes.Black, x, y);
+                            y += 35;
+                            pageEvt.Graphics.DrawString($"Generated Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", dataFont, Brushes.DimGray, x, y);
+                            y += 45;
+
+                            int colWidth = (pageEvt.PageBounds.Width - 60) / currentGrid.Columns.Count;
+
+                            // Draw Structural Table Headers
+                            for (int i = 0; i < currentGrid.Columns.Count; i++)
+                            {
+                                pageEvt.Graphics.FillRectangle(Brushes.LightGray, new Rectangle(x + (i * colWidth), y, colWidth, cellHeight));
+                                pageEvt.Graphics.DrawRectangle(Pens.Black, new Rectangle(x + (i * colWidth), y, colWidth, cellHeight));
+                                pageEvt.Graphics.DrawString(currentGrid.Columns[i].HeaderText, headerFont, Brushes.Black, x + (i * colWidth) + 4, y + 6);
+                            }
+                            y += cellHeight;
+
+                            // Draw Records Data Rows Loop
+                            foreach (DataGridViewRow row in currentGrid.Rows)
+                            {
+                                if (row.IsNewRow) continue;
+                                for (int j = 0; j < currentGrid.Columns.Count; j++)
+                                {
+                                    string valueText = row.Cells[j].Value?.ToString() ?? "";
+                                    pageEvt.Graphics.DrawRectangle(Pens.DarkGray, new Rectangle(x + (j * colWidth), y, colWidth, cellHeight));
+                                    pageEvt.Graphics.DrawString(valueText, dataFont, Brushes.Black, new RectangleF(x + (j * colWidth) + 4, y + 6, colWidth - 8, cellHeight - 8));
+                                }
+                                y += cellHeight;
+                                
+                                // Defensive page break handler preventing overflow
+                                if (y + cellHeight > pageEvt.PageBounds.Height - 60)
+                                {
+                                    pageEvt.HasMorePages = true;
+                                    return;
+                                }
+                            }
+                            pageEvt.HasMorePages = false;
+                        };
+
+                        // Invokes interactive native Windows Print Dialogue Interface
+                        using (PrintPreviewDialog ppd = new PrintPreviewDialog() { Document = printDoc, Width = 850, Height = 650, StartPosition = FormStartPosition.CenterScreen })
+                        {
+                            ppd.ShowDialog();
+                        }
+                    }
+                    else { MessageBox.Show("No active records to run printing procedures inside this subset.", "System Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                };
+
+                Button btnClose = new Button() { Text = "Close Menu", Size = new System.Drawing.Size(120, 38), Location = new System.Drawing.Point(850, 10), FlatStyle = FlatStyle.Flat };
+                btnClose.Click += (s, e) => reportsForm.Close();
+
+                bottomPanel.Controls.Add(btnExport);
+                bottomPanel.Controls.Add(btnPrint); 
+                bottomPanel.Controls.Add(btnClose);
+                reportsForm.Controls.Add(bottomPanel);
+
+                // Run structural dashboard window instance
+                reportsForm.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"System trace encountered processing exceptions: {ex.Message}", "Error Handler Trace", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
         private void InitializeComponent()
         {
             applicationsDataGridView = new DataGridView();
