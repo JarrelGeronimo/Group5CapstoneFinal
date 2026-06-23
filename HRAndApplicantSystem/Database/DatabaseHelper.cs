@@ -3600,5 +3600,132 @@ namespace HRAndApplicantSystem.Database
 
             Console.WriteLine(new string('=', 90));
         }
+// =========================================================================
+        // ADDED METHODS FOR COMPLIANT REPORTS DASHBOARD SYSTEM
+        // =========================================================================
+
+        /// <summary>
+        /// Criteria 1A: Returns a list of all applicants with detailed data
+        /// </summary>
+        public DataTable GetAllApplicantsDetailed()
+        {
+            DataTable dt = new DataTable();
+            string query = "SELECT ApplicantID, FirstName, LastName, ContactNo, Email, Education, Skills FROM Applicants";
+            
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
+                    {
+                        adapter.Fill(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetAllApplicantsDetailed: {ex.Message}");
+            }
+            return dt;
+        }
+
+        /// <summary>
+        /// Criteria 1C: Returns upcoming interview schedules across the entire workspace
+        /// </summary>
+        public DataTable GetUpcomingInterviews()
+        {
+            DataTable dt = new DataTable();
+            // Querying from Interviews table and joining Applicants and Jobs for a clear view
+            string query = @"SELECT i.InterviewID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
+                             j.JobTitle AS [Position Title], i.InterviewDate AS [Scheduled Date], i.InterviewStatus AS [Status] 
+                             FROM ((Interviews i 
+                             INNER JOIN Applications app ON i.ApplicationID = app.ApplicationID) 
+                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID) 
+                             INNER JOIN Jobs j ON app.JobID = j.JobID 
+                             WHERE i.InterviewStatus = 'Scheduled'";
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
+                    {
+                        adapter.Fill(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetUpcomingInterviews: {ex.Message}");
+            }
+            return dt;
+        }
+
+        /// <summary>
+        /// Criteria 1D: Returns historical trajectory logs of accepted and rejected candidates
+        /// </summary>
+        public DataTable GetHiringDecisionsHistory()
+        {
+            DataTable dt = new DataTable();
+            string query = @"SELECT app.ApplicationID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
+                             j.JobTitle AS [Job Applied], app.Status AS [Final Verdict], app.DateApplied AS [Submission Date]
+                             FROM (Applications app 
+                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID) 
+                             INNER JOIN Jobs j ON app.JobID = j.JobID 
+                             WHERE app.Status IN ('Accepted', 'Rejected')";
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
+                    {
+                        adapter.Fill(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetHiringDecisionsHistory: {ex.Message}");
+            }
+            return dt;
+        }
+
+        /// <summary>
+        /// Criteria 1E: CROSS-REFERENCE COMPLIANCE METHOD
+        /// Finds applicants who have NOT submitted all required documents for their applied jobs.
+        /// </summary>
+        public DataTable GetApplicantsWithMissingRequirements()
+        {
+            DataTable dt = new DataTable();
+            
+            // This cross-references job requirement types against actual submissions 
+            // to isolate any rows with missing components or document parameters.
+            string query = @"SELECT app.ApplicationID, a.FirstName & ' ' & a.LastName AS [Applicant Name], 
+                             j.JobTitle AS [Position], jr.RequirementName AS [Missing Document Name]
+                             FROM ((Applications app
+                             INNER JOIN Applicants a ON app.ApplicantID = a.ApplicantID)
+                             INNER JOIN Jobs j ON app.JobID = j.JobID)
+                             INNER JOIN JobRequirements jr ON j.JobID = jr.JobID
+                             WHERE NOT EXISTS (
+                                 SELECT 1 FROM ApplicantDocuments ad 
+                                 WHERE ad.ApplicantID = app.ApplicantID 
+                                 AND ad.JobID = app.JobID 
+                                 AND ad.RequirementTypeID = jr.RequirementTypeID
+                             )";
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    using (OleDbDataAdapter adapter = new OleDbDataAdapter(query, conn))
+                    {
+                        adapter.Fill(dt);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetApplicantsWithMissingRequirements: {ex.Message}");
+            }
+            return dt;
+        }
     }
 }
