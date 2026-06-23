@@ -1014,11 +1014,11 @@ namespace HRAndApplicantSystem.Forms
             reportsButton.BackColor = Color.FromArgb(70, 130, 180);
             reportsButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             reportsButton.ForeColor = Color.White;
-            reportsButton.Location = new Point(11, 465); 
-            
+            reportsButton.Location = new Point(480, 0);
+            reportsButton.Margin = new Padding(3, 4, 3, 4);
             reportsButton.Name = "reportsButton";
-            reportsButton.Size = new Size(137, 40);
-            reportsButton.TabIndex = 5;
+            reportsButton.Size = new Size(120, 40);
+            reportsButton.TabIndex = 4;
             reportsButton.Text = "Reports";
             reportsButton.UseVisualStyleBackColor = false;
             reportsButton.Click += ReportsButton_Click;
