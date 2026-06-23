@@ -1,6 +1,7 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
 using ApplicationModel = HRAndApplicantSystem.Models.Application;
+using HRAndApplicantSystem.Services;
 
 namespace HRAndApplicantSystem.Forms
 {
