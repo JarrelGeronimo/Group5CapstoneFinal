@@ -721,8 +721,36 @@ namespace HRAndApplicantSystem.Forms
         private void ViewApplicantButton_Click(object? sender, EventArgs? e) => ViewApplicantProfile();
         private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
         private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
+        private void ReportsButton_Click(object? sender, EventArgs? e)
+        {
+        ShowReportsDashboard();
+        }
         private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
 
+        private void ShowReportsDashboard()
+        {
+            var appMetrics = _reportsService.GetApplicationMetricsData();
+            var interviewMetrics = _reportsService.GetInterviewMetricsData();
+            var hireMetrics = _reportsService.GetTimeToHireMetricsData();
+            var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
+
+            string report =
+                $"APPLICATION REPORTS\n\n" +
+                $"Total Applications: {appMetrics?.TotalApplications ?? 0}\n\n" +
+                $"Total Interviews: {interviewMetrics?.TotalInterviews ?? 0}\n" +
+                $"Pass Rate: {interviewMetrics?.PassRate ?? 0}%\n\n" +
+                $"Average Time To Hire: {hireMetrics?.AverageDaysToHire ?? 0} days\n\n" +
+                $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0}\n" +
+                $"Offer Rate: {decisionMetrics?.OfferRate ?? 0}%\n" +
+                $"Rejection Rate: {decisionMetrics?.RejectionRate ?? 0}%";
+
+            MessageBox.Show(
+                report,
+                "Reports Dashboard",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        
         private void InitializeComponent()
         {
             applicationsDataGridView = new DataGridView();
