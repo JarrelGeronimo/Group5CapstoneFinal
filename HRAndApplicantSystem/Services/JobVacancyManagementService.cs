@@ -14,6 +14,186 @@ namespace HRAndApplicantSystem.Services
             db = new DatabaseHelper();
         }
 
+        // ════════════════════════════════════════════════════════════════
+        //  SERVICE METHODS FOR UI LAYER
+        // ════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Gets all job vacancies for display
+        /// </summary>
+        public List<JobVacancy> GetAllJobs()
+        {
+            return db.GetAllJobVacancies();
+        }
+
+        /// <summary>
+        /// Gets only open job vacancies (Status = 'Open')
+        /// </summary>
+        public List<JobVacancy> GetOpenJobs()
+        {
+            return db.GetOpenJobVacancies();
+        }
+
+        /// <summary>
+        /// Gets only closed job vacancies (Status = 'Closed')
+        /// </summary>
+        public List<JobVacancy> GetClosedJobs()
+        {
+            return db.GetClosedJobVacancies();
+        }
+
+        /// <summary>
+        /// Gets a specific job by ID
+        /// </summary>
+        public JobVacancy GetJobByID(int jobID)
+        {
+            return db.GetJobVacancyByID(jobID);
+        }
+
+        /// <summary>
+        /// Creates a new job vacancy with audit logging
+        /// </summary>
+        public bool CreateJob(JobVacancy job, string hrUsername)
+        {
+            try
+            {
+                // Set default values
+                if (string.IsNullOrWhiteSpace(job.Status))
+                    job.Status = "Open";
+                if (job.DatePosted == null)
+                    job.DatePosted = DateTime.Now;
+
+                // Validate
+                if (string.IsNullOrWhiteSpace(job.JobTitle))
+                    throw new ArgumentException("Job title cannot be empty");
+                if (string.IsNullOrWhiteSpace(job.JobDetail))
+                    throw new ArgumentException("Job details cannot be empty");
+
+                // Create in database
+                bool success = db.CreateJobVacancy(job);
+                if (success)
+                {
+                    // Log to audit trail
+                    string action = $"Created job vacancy: {job.JobTitle}";
+                    db.LogAuditTrail("HR", hrUsername, action);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error creating job: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Updates a job vacancy with audit logging
+        /// </summary>
+        public bool UpdateJob(JobVacancy job, string hrUsername)
+        {
+            try
+            {
+                // Validate
+                if (string.IsNullOrWhiteSpace(job.JobTitle))
+                    throw new ArgumentException("Job title cannot be empty");
+                if (string.IsNullOrWhiteSpace(job.JobDetail))
+                    throw new ArgumentException("Job details cannot be empty");
+
+                bool success = db.UpdateJobVacancy(job);
+                if (success)
+                {
+                    // Log to audit trail
+                    string action = $"Updated job vacancy: {job.JobTitle} (ID: {job.JobID})";
+                    db.LogAuditTrail("HR", hrUsername, action);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating job: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Closes a job vacancy (changes status to 'Closed')
+        /// </summary>
+        public bool CloseJob(int jobID, string hrUsername)
+        {
+            try
+            {
+                JobVacancy job = db.GetJobVacancyByID(jobID);
+                if (job == null)
+                    throw new ArgumentException($"Job with ID {jobID} not found");
+
+                bool success = db.CloseJobVacancy(jobID);
+                if (success)
+                {
+                    // Log to audit trail
+                    string action = $"Closed job vacancy: {job.JobTitle} (ID: {jobID})";
+                    db.LogAuditTrail("HR", hrUsername, action);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing job: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Deletes a job vacancy after checking for applications
+        /// </summary>
+        public bool DeleteJob(int jobID, string hrUsername, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+            try
+            {
+                // Check if job has applications
+                if (db.JobHasApplications(jobID))
+                {
+                    errorMessage = "Cannot delete this job vacancy because it has associated applications. Please close it instead.";
+                    return false;
+                }
+
+                JobVacancy job = db.GetJobVacancyByID(jobID);
+                if (job == null)
+                {
+                    errorMessage = $"Job with ID {jobID} not found";
+                    return false;
+                }
+
+                bool success = db.DeleteJobVacancy(jobID);
+                if (success)
+                {
+                    // Log to audit trail
+                    string action = $"Deleted job vacancy: {job.JobTitle} (ID: {jobID})";
+                    db.LogAuditTrail("HR", hrUsername, action);
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error deleting job: {ex.Message}";
+                Console.WriteLine(errorMessage);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a job is open for applications
+        /// </summary>
+        public bool IsJobOpen(int jobID)
+        {
+            JobVacancy job = db.GetJobVacancyByID(jobID);
+            return job != null && job.Status == "Open";
+        }
+
+        // ════════════════════════════════════════════════════════════════
+        //  CONSOLE-BASED METHODS (Legacy)
+        // ════════════════════════════════════════════════════════════════
+        
         /// <summary>
         /// Displays the job vacancy management menu for managers and admins
         /// </summary>

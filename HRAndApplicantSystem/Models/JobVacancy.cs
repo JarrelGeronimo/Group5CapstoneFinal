@@ -1,4 +1,6 @@
-﻿namespace HRAndApplicantSystem.Models
+﻿using System;
+
+namespace HRAndApplicantSystem.Models
 {
     public class JobVacancy
     {
@@ -9,5 +11,7 @@
         public string JobDetail { get; set; }
 
         public string Status { get; set; }
+
+        public DateTime? DatePosted { get; set; }
     }
 }

@@ -317,6 +317,19 @@ namespace HRAndApplicantSystem.Forms
             
             contentPanel.Controls.Add(hiringButton);
 
+            // Job Vacancy Management (HR-specific feature)
+            Button jobVacancyButton = new Button();
+            jobVacancyButton.Text = "5. Manage Job\nVacancies";
+            jobVacancyButton.Size = new System.Drawing.Size(300, 100);
+            jobVacancyButton.BackColor = System.Drawing.Color.FromArgb(153, 102, 204);
+            jobVacancyButton.ForeColor = System.Drawing.Color.White;
+            jobVacancyButton.Font = new Font("Arial", 11, FontStyle.Bold);
+            jobVacancyButton.Cursor = Cursors.Hand;
+            jobVacancyButton.Margin = new Padding(10);
+            jobVacancyButton.FlatStyle = FlatStyle.Flat;
+            jobVacancyButton.Click += (s, e) => OpenJobVacancyManagementForm();
+            contentPanel.Controls.Add(jobVacancyButton);
+
             // Quick action panel - Reports
             Button reportsButton = new Button();
             reportsButton.Text = "View Reports";
@@ -1208,6 +1221,19 @@ namespace HRAndApplicantSystem.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Error opening applications: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void OpenJobVacancyManagementForm()
+        {
+            try
+            {
+                JobVacancyManagementForm form = new JobVacancyManagementForm(_db, _username);
+                form.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening job vacancy management: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

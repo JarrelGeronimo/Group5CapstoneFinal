@@ -364,21 +364,59 @@ namespace HRAndApplicantSystem.Database
                         return false;
                     }
 
-                    // Update using ApplicantID as the primary key
-                    string query = "UPDATE [Applicants] SET [First Name] = @firstName, [Last Name] = @lastName, [ContactNo] = @contactNo, [Address] = @address, [Education] = @education, [Skills] = @skills WHERE [ApplicantID] = @applicantId";
-
-                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    // Get UserID for the username
+                    int userID = GetUserIDByUsername(username);
+                    if (userID == -1)
                     {
-                        cmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
-                        cmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
-                        cmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
-                        cmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
-                        cmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
-                        cmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
-                        cmd.Parameters.AddWithValue("@applicantId", applicant.ApplicantID);
+                        Console.WriteLine($"Error: UserID not found for username: {username}");
+                        return false;
+                    }
 
-                        int rowsAffected = cmd.ExecuteNonQuery();
-                        return rowsAffected > 0;
+                    // Check if applicant record exists
+                    string checkQuery = "SELECT COUNT(*) FROM [Applicants] WHERE [UserID] = @userID";
+                    using (OleDbCommand checkCmd = new OleDbCommand(checkQuery, conn))
+                    {
+                        checkCmd.Parameters.AddWithValue("@userID", userID);
+                        int recordCount = (int)checkCmd.ExecuteScalar();
+
+                        if (recordCount == 0)
+                        {
+                            // No record exists, INSERT new applicant
+                            string insertQuery = "INSERT INTO [Applicants] ([UserID], [First Name], [Last Name], [ContactNo], [Address], [Education], [Skills]) VALUES (@userID, @firstName, @lastName, @contactNo, @address, @education, @skills)";
+
+                            using (OleDbCommand insertCmd = new OleDbCommand(insertQuery, conn))
+                            {
+                                insertCmd.Parameters.AddWithValue("@userID", userID);
+                                insertCmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
+                                insertCmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
+                                insertCmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
+                                insertCmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
+                                insertCmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
+                                insertCmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
+
+                                int rowsAffected = insertCmd.ExecuteNonQuery();
+                                return rowsAffected > 0;
+                            }
+                        }
+                        else
+                        {
+                            // Record exists, UPDATE it using UserID
+                            string updateQuery = "UPDATE [Applicants] SET [First Name] = @firstName, [Last Name] = @lastName, [ContactNo] = @contactNo, [Address] = @address, [Education] = @education, [Skills] = @skills WHERE [UserID] = @userID";
+
+                            using (OleDbCommand updateCmd = new OleDbCommand(updateQuery, conn))
+                            {
+                                updateCmd.Parameters.AddWithValue("@firstName", applicant.FirstName ?? "");
+                                updateCmd.Parameters.AddWithValue("@lastName", applicant.LastName ?? "");
+                                updateCmd.Parameters.AddWithValue("@contactNo", applicant.ContactNo ?? "");
+                                updateCmd.Parameters.AddWithValue("@address", applicant.Address ?? "");
+                                updateCmd.Parameters.AddWithValue("@education", applicant.Education ?? "");
+                                updateCmd.Parameters.AddWithValue("@skills", applicant.Skills ?? "");
+                                updateCmd.Parameters.AddWithValue("@userID", userID);
+
+                                int rowsAffected = updateCmd.ExecuteNonQuery();
+                                return rowsAffected > 0;
+                            }
+                        }
                     }
                 }
             }
@@ -520,7 +558,7 @@ namespace HRAndApplicantSystem.Database
                 {
                     conn.Open();
 
-                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] ORDER BY [JobID]";
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] ORDER BY [JobID] DESC";
 
                     using (OleDbCommand cmd = new OleDbCommand(query, conn))
                     {
@@ -533,7 +571,8 @@ namespace HRAndApplicantSystem.Database
                                     JobID = Convert.ToInt32(reader["JobID"]),
                                     JobTitle = reader["JobTitle"]?.ToString() ?? "",
                                     JobDetail = reader["JobDetail"]?.ToString() ?? "",
-                                    Status = reader["Status"]?.ToString() ?? ""
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    DatePosted = null
                                 });
                             }
                         }
@@ -571,7 +610,8 @@ namespace HRAndApplicantSystem.Database
                                     JobID = Convert.ToInt32(reader["JobID"]),
                                     JobTitle = reader["JobTitle"]?.ToString() ?? "",
                                     JobDetail = reader["JobDetail"]?.ToString() ?? "",
-                                    Status = reader["Status"]?.ToString() ?? ""
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    DatePosted = null
                                 };
                             }
                         }
@@ -584,6 +624,144 @@ namespace HRAndApplicantSystem.Database
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Gets all open job vacancies (Status = 'Open')
+        /// </summary>
+        public List<JobVacancy> GetOpenJobVacancies()
+        {
+            List<JobVacancy> vacancies = new List<JobVacancy>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] WHERE [Status] = 'Open' ORDER BY [JobID] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                vacancies.Add(new JobVacancy
+                                {
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? "",
+                                    JobDetail = reader["JobDetail"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    DatePosted = null
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving open job vacancies: {ex.Message}");
+            }
+
+            return vacancies;
+        }
+
+        /// <summary>
+        /// Gets all closed job vacancies (Status = 'Closed')
+        /// </summary>
+        public List<JobVacancy> GetClosedJobVacancies()
+        {
+            List<JobVacancy> vacancies = new List<JobVacancy>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = "SELECT [JobID], [JobTitle], [JobDetail], [Status] FROM [JobVacancies] WHERE [Status] = 'Closed' ORDER BY [JobID] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                vacancies.Add(new JobVacancy
+                                {
+                                    JobID = Convert.ToInt32(reader["JobID"]),
+                                    JobTitle = reader["JobTitle"]?.ToString() ?? "",
+                                    JobDetail = reader["JobDetail"]?.ToString() ?? "",
+                                    Status = reader["Status"]?.ToString() ?? "",
+                                    DatePosted = null
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving closed job vacancies: {ex.Message}");
+            }
+
+            return vacancies;
+        }
+
+        /// <summary>
+        /// Closes a job vacancy by setting its status to 'Closed'
+        /// </summary>
+        public bool CloseJobVacancy(int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "UPDATE [JobVacancies] SET [Status] = 'Closed' WHERE [JobID] = @id";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@id", jobID);
+                        int rowsAffected = cmd.ExecuteNonQuery();
+                        return rowsAffected > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing job vacancy: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Checks if a job vacancy has any applications
+        /// </summary>
+        public bool JobHasApplications(int jobID)
+        {
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+                    string query = "SELECT COUNT(*) FROM [Applications] WHERE [JobID] = @jobID";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@jobID", jobID);
+                        int count = (int)cmd.ExecuteScalar();
+                        return count > 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error checking job applications: {ex.Message}");
+                return false;
+            }
         }
 
         public List<dynamic> GetActiveJobsAsDynamic()
