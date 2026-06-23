@@ -4,6 +4,7 @@
         ".\\HRAndApplicantSystem.exe": true,
         "Push-Location": true,
         "&dotnet": true,
-        "dotnet run": true
+        "dotnet run": true,
+        "Tee-Object": true
     }
 }

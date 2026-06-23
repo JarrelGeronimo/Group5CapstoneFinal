@@ -344,12 +344,12 @@ namespace HRAndApplicantSystem.Forms
             {
                 try
                 {
-                    ApplicationManagementForm form = new ApplicationManagementForm(_db, _currentUser.RoleID, "All Statuses", _currentUser.Username);
+                    ReportsForm form = new ReportsForm(_db, _currentUser.Username);
                     form.ShowDialog(this);
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error opening reports management: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show($"Error opening reports: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             };
             

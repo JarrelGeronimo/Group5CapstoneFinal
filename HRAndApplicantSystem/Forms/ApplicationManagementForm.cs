@@ -32,7 +32,6 @@ namespace HRAndApplicantSystem.Forms
         private Button? changeStatusButton;
         private Button? viewHistoryButton;
         private Button? refreshButton;
-        private Button? reportsButton;
         private Panel? filterPanel;
         private Label? titleLabel;
         private Label? searchLabel;
@@ -809,212 +808,8 @@ namespace HRAndApplicantSystem.Forms
         private void ViewDocumentsButton_Click(object? sender, EventArgs? e) => ViewDocuments();
         private void ChangeStatusButton_Click(object? sender, EventArgs? e) => ChangeStatus();
         private void ViewHistoryButton_Click(object? sender, EventArgs? e) => ViewApplicationHistory();
-        private void ReportsButton_Click(object sender, EventArgs e)
-        {
-            ShowReportsDashboard();
-        }
         private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
 
-        // =========================================================================
-        // SPECIAL REPORTS ENGINE: EXPORTS CSV AND PRINTS TO PHYSICAL/PDF PRINTERS
-        // =========================================================================
-        private void ShowReportsDashboard()
-        {
-            try
-            {
-                // Lumikha ng isang bagong pop-up window form
-                Form reportsForm = new Form();
-                reportsForm.Text = "HR Analytics & Operational Reports Dashboard";
-                reportsForm.Size = new System.Drawing.Size(1000, 700);
-                reportsForm.StartPosition = FormStartPosition.CenterScreen;
-                reportsForm.BackColor = System.Drawing.Color.White;
-
-                // Visual header panel sa itaas 
-                Panel summaryPanel = new Panel() { Dock = DockStyle.Top, Height = 60, BackColor = System.Drawing.Color.FromArgb(240, 244, 248) };
-                Label lblSummary = new Label()
-                {
-                    Text = "📊 HR OPERATIONAL SYSTEM REPORTS DASHBOARD",
-                    Font = new Font("Segoe UI", 12, FontStyle.Bold),
-                    ForeColor = System.Drawing.Color.FromArgb(30, 41, 59),
-                    Dock = DockStyle.Fill,
-                    TextAlign = ContentAlignment.MiddleCenter
-                };
-                summaryPanel.Controls.Add(lblSummary);
-                reportsForm.Controls.Add(summaryPanel);
-
-                // TabControl para sa mga listahan na hiningi sa rubric checklist
-                TabControl tabControl = new TabControl() { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9) };
-                string[] reportTypes = { "Applicant List", "Pending Applications" };
-
-                foreach (string type in reportTypes)
-                {
-                    TabPage tabPage = new TabPage(type);
-                    DataGridView dgv = new DataGridView()
-                    {
-                        Dock = DockStyle.Fill,
-                        AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
-                        BackgroundColor = System.Drawing.Color.White,
-                        ReadOnly = true,
-                        AllowUserToAddRows = false
-                    };
-
-                    // Gagamitin natin ang _allApplications list na siguradong mayroon ang form mo
-                    if (_allApplications != null)
-                    {
-                        if (type == "Applicant List")
-                        {
-                            dgv.DataSource = _allApplications.ToList();
-                        }
-                        else if (type == "Pending Applications")
-                        {
-                            dgv.DataSource = _allApplications
-                                .Where(a => a.Status == "Submitted" || a.Status == "Under Review" || a.Status == "Pending")
-                                .ToList();
-                        }
-                    }
-
-                    tabPage.Controls.Add(dgv);
-                    tabControl.Controls.Add(tabPage);
-                }
-                reportsForm.Controls.Add(tabControl);
-
-                // Panel sa pinakailalim kung saan natin ilalagay ang Export at Print
-                Panel bottomPanel = new Panel() { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.WhiteSmoke };
-                
-                // CRITERIA #2: CSV File System Export Engine
-                Button btnExport = new Button()
-                {
-                    Text = "📥 Export Report (CSV)",
-                    Size = new System.Drawing.Size(180, 38),
-                    Location = new System.Drawing.Point(15, 10),
-                    BackColor = System.Drawing.Color.FromArgb(34, 139, 34), // Berde
-                    ForeColor = System.Drawing.Color.White,
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
-                };
-                
-                btnExport.Click += (s, e) =>
-                {
-                    TabPage activeTab = tabControl.SelectedTab;
-                    DataGridView currentGrid = activeTab.Controls.OfType<DataGridView>().FirstOrDefault();
-                    
-                    if (currentGrid != null && currentGrid.Rows.Count > 0)
-                    {
-                        using (SaveFileDialog sfd = new SaveFileDialog() { Filter = "CSV Files (*.csv)|*.csv", FileName = $"{activeTab.Text.Replace(" ", "_")}_Report.csv" })
-                        {
-                            if (sfd.ShowDialog() == DialogResult.OK)
-                            {
-                                try
-                                {
-                                    var lines = new List<string>();
-                                    var headers = currentGrid.Columns.Cast<DataGridViewColumn>().Select(x => x.HeaderText);
-                                    lines.Add(string.Join(",", headers));
-
-                                    foreach (DataGridViewRow row in currentGrid.Rows)
-                                    {
-                                        var cells = row.Cells.Cast<DataGridViewCell>().Select(x => $"\"{x.Value?.ToString().Replace("\"", \"\")}\"");
-                                        lines.Add(string.Join(",", cells));
-                                    }
-
-                                    System.IO.File.WriteAllLines(sfd.FileName, lines, System.Text.Encoding.UTF8);
-                                    MessageBox.Show("Report successfully saved!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                                }
-                                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                            }
-                        }
-                    }
-                    else { MessageBox.Show("No records available to export.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-                };
-
-                // CRITERIA #2: Document Printer & PDF Rendering Engine
-                Button btnPrint = new Button()
-                {
-                    Text = "🖨️ Print / Save as PDF",
-                    Size = new System.Drawing.Size(180, 38),
-                    Location = new System.Drawing.Point(210, 10), // Katabi ng Export button
-                    BackColor = System.Drawing.Color.FromArgb(70, 130, 180), // Asul
-                    ForeColor = System.Drawing.Color.White,
-                    FlatStyle = FlatStyle.Flat,
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold)
-                };
-
-                btnPrint.Click += (s, e) =>
-                {
-                    TabPage activeTab = tabControl.SelectedTab;
-                    DataGridView currentGrid = activeTab.Controls.OfType<DataGridView>().FirstOrDefault();
-
-                    if (currentGrid != null && currentGrid.Rows.Count > 0)
-                    {
-                        System.Drawing.Printing.PrintDocument printDoc = new System.Drawing.Printing.PrintDocument();
-                        printDoc.DocumentName = $"{activeTab.Text} Report";
-                        
-                        printDoc.PrintPage += (senderDoc, pageEvt) =>
-                        {
-                            int x = 30, y = 40;
-                            int cellHeight = 30;
-                            Font titleFont = new Font("Segoe UI", 16, FontStyle.Bold);
-                            Font headerFont = new Font("Segoe UI", 9, FontStyle.Bold);
-                            Font dataFont = new Font("Segoe UI", 9);
-
-                            pageEvt.Graphics.DrawString($"HR Information Subsystem: {activeTab.Text}", titleFont, Brushes.Black, x, y);
-                            y += 35;
-                            pageEvt.Graphics.DrawString($"Generated Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", dataFont, Brushes.DimGray, x, y);
-                            y += 45;
-
-                            int colWidth = (pageEvt.PageBounds.Width - 60) / currentGrid.Columns.Count;
-
-                            for (int i = 0; i < currentGrid.Columns.Count; i++)
-                            {
-                                pageEvt.Graphics.FillRectangle(Brushes.LightGray, new Rectangle(x + (i * colWidth), y, colWidth, cellHeight));
-                                pageEvt.Graphics.DrawRectangle(Pens.Black, new Rectangle(x + (i * colWidth), y, colWidth, cellHeight));
-                                pageEvt.Graphics.DrawString(currentGrid.Columns[i].HeaderText, headerFont, Brushes.Black, x + (i * colWidth) + 4, y + 6);
-                            }
-                            y += cellHeight;
-
-                            foreach (DataGridViewRow row in currentGrid.Rows)
-                            {
-                                if (row.IsNewRow) continue;
-                                for (int j = 0; j < currentGrid.Columns.Count; j++)
-                                {
-                                    string valueText = row.Cells[j].Value?.ToString() ?? "";
-                                    pageEvt.Graphics.DrawRectangle(Pens.DarkGray, new Rectangle(x + (j * colWidth), y, colWidth, cellHeight));
-                                    pageEvt.Graphics.DrawString(valueText, dataFont, Brushes.Black, new RectangleF(x + (j * colWidth) + 4, y + 6, colWidth - 8, cellHeight - 8));
-                                }
-                                y += cellHeight;
-                                
-                                if (y + cellHeight > pageEvt.PageBounds.Height - 60)
-                                {
-                                    pageEvt.HasMorePages = true;
-                                    return;
-                                }
-                            }
-                            pageEvt.HasMorePages = false;
-                        };
-
-                        using (PrintPreviewDialog ppd = new PrintPreviewDialog() { Document = printDoc, Width = 850, Height = 650, StartPosition = FormStartPosition.CenterScreen })
-                        {
-                            ppd.ShowDialog();
-                        }
-                    }
-                    else { MessageBox.Show("No active records to print.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
-                };
-
-                Button btnClose = new Button() { Text = "Close Menu", Size = new System.Drawing.Size(120, 38), Location = new System.Drawing.Point(850, 10), FlatStyle = FlatStyle.Flat };
-                btnClose.Click += (s, e) => reportsForm.Close();
-
-                // I-register lahat sa panel container
-                bottomPanel.Controls.Add(btnExport);
-                bottomPanel.Controls.Add(btnPrint); 
-                bottomPanel.Controls.Add(btnClose);
-                reportsForm.Controls.Add(bottomPanel);
-
-                reportsForm.ShowDialog();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error processing report dashboard: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
         private void InitializeComponent()
         {
             applicationsDataGridView = new DataGridView();
@@ -1028,7 +823,6 @@ namespace HRAndApplicantSystem.Forms
             changeStatusButton = new Button();
             viewHistoryButton = new Button();
             refreshButton = new Button();
-            reportsButton = new Button();
             closeButton = new Button();
             statusLabel = new Label();
             ((System.ComponentModel.ISupportInitialize)applicationsDataGridView).BeginInit();
@@ -1105,7 +899,6 @@ namespace HRAndApplicantSystem.Forms
             buttonPanel.Controls.Add(changeStatusButton);
             buttonPanel.Controls.Add(viewHistoryButton);
             buttonPanel.Controls.Add(refreshButton);
-            buttonPanel.Controls.Add(reportsButton);
             buttonPanel.Controls.Add(closeButton);
             buttonPanel.Location = new Point(11, 87);
             buttonPanel.Margin = new Padding(3, 4, 3, 4);
@@ -1182,19 +975,6 @@ namespace HRAndApplicantSystem.Forms
             refreshButton.Text = "Refresh";
             refreshButton.UseVisualStyleBackColor = false;
             refreshButton.Click += RefreshButton_Click;
-            // 
-            // reportsButton
-            reportsButton.BackColor = Color.FromArgb(70, 130, 180);
-            reportsButton.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            reportsButton.ForeColor = Color.White;
-            reportsButton.Location = new Point(480, 0);
-            reportsButton.Margin = new Padding(3, 4, 3, 4);
-            reportsButton.Name = "reportsButton";
-            reportsButton.Size = new Size(120, 40);
-            reportsButton.TabIndex = 4;
-            reportsButton.Text = "Reports";
-            reportsButton.UseVisualStyleBackColor = false;
-            reportsButton.Click += ReportsButton_Click;
             // closeButton
             // 
             closeButton.BackColor = Color.FromArgb(128, 128, 128);
