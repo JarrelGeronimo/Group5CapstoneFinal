@@ -813,6 +813,8 @@ namespace HRAndApplicantSystem.Forms
         {
             ShowReportsDashboard();
         }
+        private void CloseButton_Click(object? sender, EventArgs? e) => this.Close();
+
         // =========================================================================
         // SPECIAL REPORTS ENGINE: EXPORTS CSV AND PRINTS TO PHYSICAL/PDF PRINTERS
         // =========================================================================
@@ -820,27 +822,19 @@ namespace HRAndApplicantSystem.Forms
         {
             try
             {
-                // 1. Fetch backend calculation summaries for high-level metrics
-                var appMetrics = _reportsService.GetApplicationMetricsData();
-                var interviewMetrics = _reportsService.GetInterviewMetricsData();
-                var hireMetrics = _reportsService.GetTimeToHireMetricsData();
-                var decisionMetrics = _reportsService.GetHiringDecisionMetricsData();
-
-                // 2. Generate custom window canvas framework
+                // Lumikha ng isang bagong pop-up window form
                 Form reportsForm = new Form();
                 reportsForm.Text = "HR Analytics & Operational Reports Dashboard";
                 reportsForm.Size = new System.Drawing.Size(1000, 700);
                 reportsForm.StartPosition = FormStartPosition.CenterScreen;
                 reportsForm.BackColor = System.Drawing.Color.White;
 
-                // Visual header panel displaying calculations
-                Panel summaryPanel = new Panel() { Dock = DockStyle.Top, Height = 120, BackColor = System.Drawing.Color.FromArgb(240, 244, 248) };
+                // Visual header panel sa itaas 
+                Panel summaryPanel = new Panel() { Dock = DockStyle.Top, Height = 60, BackColor = System.Drawing.Color.FromArgb(240, 244, 248) };
                 Label lblSummary = new Label()
                 {
-                    Text = $"📈 SUMMARY METRICS:  Total Apps: {appMetrics?.TotalApplications ?? 0}  |  " +
-                           $"Interviews: {interviewMetrics?.TotalInterviews ?? 0} (Pass Rate: {interviewMetrics?.PassRate ?? 0}%)  |  " +
-                           $"Total Decisions: {decisionMetrics?.TotalDecisions ?? 0} (Offer: {decisionMetrics?.OfferRate ?? 0}% / Reject: {decisionMetrics?.RejectionRate ?? 0}%)",
-                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    Text = "📊 HR OPERATIONAL SYSTEM REPORTS DASHBOARD",
+                    Font = new Font("Segoe UI", 12, FontStyle.Bold),
                     ForeColor = System.Drawing.Color.FromArgb(30, 41, 59),
                     Dock = DockStyle.Fill,
                     TextAlign = ContentAlignment.MiddleCenter
@@ -848,9 +842,9 @@ namespace HRAndApplicantSystem.Forms
                 summaryPanel.Controls.Add(lblSummary);
                 reportsForm.Controls.Add(summaryPanel);
 
-                // TabControl canvas sorting explicit report types required by rubric criteria
+                // TabControl para sa mga listahan na hiningi sa rubric checklist
                 TabControl tabControl = new TabControl() { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 9) };
-                string[] reportTypes = { "Applicant List", "Pending Applications", "Interviews Schedule", "Accepted-Rejected", "Missing Requirements" };
+                string[] reportTypes = { "Applicant List", "Pending Applications" };
 
                 foreach (string type in reportTypes)
                 {
@@ -864,28 +858,27 @@ namespace HRAndApplicantSystem.Forms
                         AllowUserToAddRows = false
                     };
 
-                    // Bind internal functional record data sets securely
-                    if (type == "Applicant List") dgv.DataSource = _db.GetAllApplicantsDetailed(); 
-                    else if (type == "Pending Applications") 
+                    // Gagamitin natin ang _allApplications list na siguradong mayroon ang form mo
+                    if (_allApplications != null)
                     {
-                        var allApps = _db.GetAllApplications();
-                        if (allApps != null)
+                        if (type == "Applicant List")
                         {
-                            dgv.DataSource = allApps
+                            dgv.DataSource = _allApplications.ToList();
+                        }
+                        else if (type == "Pending Applications")
+                        {
+                            dgv.DataSource = _allApplications
                                 .Where(a => a.Status == "Submitted" || a.Status == "Under Review" || a.Status == "Pending")
                                 .ToList();
                         }
                     }
-                    else if (type == "Interviews Schedule") dgv.DataSource = _db.GetUpcomingInterviews();
-                    else if (type == "Accepted-Rejected") dgv.DataSource = _db.GetHiringDecisionsHistory();
-                    else if (type == "Missing Requirements") dgv.DataSource = _db.GetApplicantsWithMissingRequirements();
 
                     tabPage.Controls.Add(dgv);
                     tabControl.Controls.Add(tabPage);
                 }
                 reportsForm.Controls.Add(tabControl);
 
-                // Base management operations ribbon containing functional user buttons
+                // Panel sa pinakailalim kung saan natin ilalagay ang Export at Print
                 Panel bottomPanel = new Panel() { Dock = DockStyle.Bottom, Height = 60, BackColor = System.Drawing.Color.WhiteSmoke };
                 
                 // CRITERIA #2: CSV File System Export Engine
@@ -894,7 +887,7 @@ namespace HRAndApplicantSystem.Forms
                     Text = "📥 Export Report (CSV)",
                     Size = new System.Drawing.Size(180, 38),
                     Location = new System.Drawing.Point(15, 10),
-                    BackColor = System.Drawing.Color.FromArgb(34, 139, 34), // Forest Green
+                    BackColor = System.Drawing.Color.FromArgb(34, 139, 34), // Berde
                     ForeColor = System.Drawing.Color.White,
                     FlatStyle = FlatStyle.Flat,
                     Font = new Font("Segoe UI", 9, FontStyle.Bold)
@@ -919,18 +912,18 @@ namespace HRAndApplicantSystem.Forms
 
                                     foreach (DataGridViewRow row in currentGrid.Rows)
                                     {
-                                        var cells = row.Cells.Cast<DataGridViewCell>().Select(x => $"\"{x.Value?.ToString().Replace("\"", "\"\"")}\"");
+                                        var cells = row.Cells.Cast<DataGridViewCell>().Select(x => $"\"{x.Value?.ToString().Replace("\"", \"\")}\"");
                                         lines.Add(string.Join(",", cells));
                                     }
 
                                     System.IO.File.WriteAllLines(sfd.FileName, lines, System.Text.Encoding.UTF8);
-                                    MessageBox.Show("Report dataset saved successfully!", "Success Trace", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                    MessageBox.Show("Report successfully saved!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                                 }
-                                catch (Exception ex) { MessageBox.Show($"File export action failed: {ex.Message}", "Error Handler", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                                catch (Exception ex) { MessageBox.Show($"Export failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error); }
                             }
                         }
                     }
-                    else { MessageBox.Show("No active rows inside this grid subset to run export rules.", "System Alert", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                    else { MessageBox.Show("No records available to export.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
                 };
 
                 // CRITERIA #2: Document Printer & PDF Rendering Engine
@@ -938,8 +931,8 @@ namespace HRAndApplicantSystem.Forms
                 {
                     Text = "🖨️ Print / Save as PDF",
                     Size = new System.Drawing.Size(180, 38),
-                    Location = new System.Drawing.Point(210, 10), // Placed perfectly beside the Export button
-                    BackColor = System.Drawing.Color.FromArgb(70, 130, 180), // Steel Blue
+                    Location = new System.Drawing.Point(210, 10), // Katabi ng Export button
+                    BackColor = System.Drawing.Color.FromArgb(70, 130, 180), // Asul
                     ForeColor = System.Drawing.Color.White,
                     FlatStyle = FlatStyle.Flat,
                     Font = new Font("Segoe UI", 9, FontStyle.Bold)
@@ -953,9 +946,8 @@ namespace HRAndApplicantSystem.Forms
                     if (currentGrid != null && currentGrid.Rows.Count > 0)
                     {
                         System.Drawing.Printing.PrintDocument printDoc = new System.Drawing.Printing.PrintDocument();
-                        printDoc.DocumentName = $"{activeTab.Text} Operational Report";
+                        printDoc.DocumentName = $"{activeTab.Text} Report";
                         
-                        // Converts active window DataGridView collection data into physical document matrix rules
                         printDoc.PrintPage += (senderDoc, pageEvt) =>
                         {
                             int x = 30, y = 40;
@@ -964,7 +956,6 @@ namespace HRAndApplicantSystem.Forms
                             Font headerFont = new Font("Segoe UI", 9, FontStyle.Bold);
                             Font dataFont = new Font("Segoe UI", 9);
 
-                            // Title Banner Rendering
                             pageEvt.Graphics.DrawString($"HR Information Subsystem: {activeTab.Text}", titleFont, Brushes.Black, x, y);
                             y += 35;
                             pageEvt.Graphics.DrawString($"Generated Timestamp: {DateTime.Now:yyyy-MM-dd HH:mm:ss}", dataFont, Brushes.DimGray, x, y);
@@ -972,7 +963,6 @@ namespace HRAndApplicantSystem.Forms
 
                             int colWidth = (pageEvt.PageBounds.Width - 60) / currentGrid.Columns.Count;
 
-                            // Draw Structural Table Headers
                             for (int i = 0; i < currentGrid.Columns.Count; i++)
                             {
                                 pageEvt.Graphics.FillRectangle(Brushes.LightGray, new Rectangle(x + (i * colWidth), y, colWidth, cellHeight));
@@ -981,7 +971,6 @@ namespace HRAndApplicantSystem.Forms
                             }
                             y += cellHeight;
 
-                            // Draw Records Data Rows Loop
                             foreach (DataGridViewRow row in currentGrid.Rows)
                             {
                                 if (row.IsNewRow) continue;
@@ -993,7 +982,6 @@ namespace HRAndApplicantSystem.Forms
                                 }
                                 y += cellHeight;
                                 
-                                // Defensive page break handler preventing overflow
                                 if (y + cellHeight > pageEvt.PageBounds.Height - 60)
                                 {
                                     pageEvt.HasMorePages = true;
@@ -1003,29 +991,28 @@ namespace HRAndApplicantSystem.Forms
                             pageEvt.HasMorePages = false;
                         };
 
-                        // Invokes interactive native Windows Print Dialogue Interface
                         using (PrintPreviewDialog ppd = new PrintPreviewDialog() { Document = printDoc, Width = 850, Height = 650, StartPosition = FormStartPosition.CenterScreen })
                         {
                             ppd.ShowDialog();
                         }
                     }
-                    else { MessageBox.Show("No active records to run printing procedures inside this subset.", "System Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
+                    else { MessageBox.Show("No active records to print.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning); }
                 };
 
                 Button btnClose = new Button() { Text = "Close Menu", Size = new System.Drawing.Size(120, 38), Location = new System.Drawing.Point(850, 10), FlatStyle = FlatStyle.Flat };
                 btnClose.Click += (s, e) => reportsForm.Close();
 
+                // I-register lahat sa panel container
                 bottomPanel.Controls.Add(btnExport);
                 bottomPanel.Controls.Add(btnPrint); 
                 bottomPanel.Controls.Add(btnClose);
                 reportsForm.Controls.Add(bottomPanel);
 
-                // Run structural dashboard window instance
                 reportsForm.ShowDialog();
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"System trace encountered processing exceptions: {ex.Message}", "Error Handler Trace", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error processing report dashboard: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         private void InitializeComponent()
