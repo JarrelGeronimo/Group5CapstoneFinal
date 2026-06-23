@@ -314,7 +314,19 @@ namespace HRAndApplicantSystem.Forms
             reportsButton.Cursor = Cursors.Hand;
             reportsButton.Margin = new Padding(10);
             reportsButton.FlatStyle = FlatStyle.Flat;
-            reportsButton.Click += (s, e) => MessageBox.Show("Reports feature coming soon", "Feature", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            reportsButton.Click += (s, e) => 
+            {
+                try
+                {
+                    ApplicationManagementForm form = new ApplicationManagementForm(_db, _currentUser.RoleID, "All Statuses", _currentUser.Username);
+                    form.ShowDialog(this);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error opening reports management: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            };
+            
             contentPanel.Controls.Add(reportsButton);
 
             // Logout button
