@@ -1650,6 +1650,7 @@ namespace HRAndApplicantSystem.Database
                                 {
                                     AuditID = reader["AuditID"],
                                     UserType = reader["UserType"],
+                                    UserID = userID,
                                     Username = username,
                                     Action = reader["Action"],
                                     ActionDate = reader["ActionDate"]
@@ -1665,6 +1666,154 @@ namespace HRAndApplicantSystem.Database
             }
 
             return auditLogs;
+        }
+
+        public List<dynamic> GetAuditLogsByUserID(int userID, int limit = 100)
+        {
+            List<dynamic> auditLogs = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = $@"SELECT TOP {limit} [AuditID], [UserType], [UserID], [Action], [ActionDate]
+                                     FROM [AuditTrail]
+                                     WHERE [UserID] = @userID
+                                     ORDER BY [ActionDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userID", userID);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                string username = GetUsernameByUserID(userID);
+                                auditLogs.Add(new
+                                {
+                                    AuditID = reader["AuditID"],
+                                    UserType = reader["UserType"],
+                                    UserID = userID,
+                                    Username = username ?? "Unknown",
+                                    Action = reader["Action"],
+                                    ActionDate = reader["ActionDate"]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving audit logs for user {userID}: {ex.Message}");
+            }
+
+            return auditLogs;
+        }
+
+        public List<dynamic> GetAuditLogsByUserType(string userType, int limit = 100)
+        {
+            List<dynamic> auditLogs = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = $@"SELECT TOP {limit} [AuditID], [UserType], [UserID], [Action], [ActionDate]
+                                     FROM [AuditTrail]
+                                     WHERE [UserType] = @userType
+                                     ORDER BY [ActionDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@userType", userType);
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int userID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0;
+                                string username = userID > 0 ? GetUsernameByUserID(userID) : "Unknown";
+
+                                auditLogs.Add(new
+                                {
+                                    AuditID = reader["AuditID"],
+                                    UserType = reader["UserType"],
+                                    UserID = userID,
+                                    Username = username,
+                                    Action = reader["Action"],
+                                    ActionDate = reader["ActionDate"]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving audit logs for user type {userType}: {ex.Message}");
+            }
+
+            return auditLogs;
+        }
+
+        public List<dynamic> GetAuditLogsByDateRange(DateTime startDate, DateTime endDate, int limit = 500)
+        {
+            List<dynamic> auditLogs = new List<dynamic>();
+
+            try
+            {
+                using (OleDbConnection conn = new OleDbConnection(connectionString))
+                {
+                    conn.Open();
+
+                    string query = $@"SELECT TOP {limit} [AuditID], [UserType], [UserID], [Action], [ActionDate]
+                                     FROM [AuditTrail]
+                                     WHERE [ActionDate] BETWEEN @startDate AND @endDate
+                                     ORDER BY [ActionDate] DESC";
+
+                    using (OleDbCommand cmd = new OleDbCommand(query, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@startDate", startDate.Date);
+                        cmd.Parameters.AddWithValue("@endDate", endDate.Date.AddDays(1).AddSeconds(-1));
+
+                        using (OleDbDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                int userID = reader["UserID"] != DBNull.Value ? Convert.ToInt32(reader["UserID"]) : 0;
+                                string username = userID > 0 ? GetUsernameByUserID(userID) : "Unknown";
+
+                                auditLogs.Add(new
+                                {
+                                    AuditID = reader["AuditID"],
+                                    UserType = reader["UserType"],
+                                    UserID = userID,
+                                    Username = username,
+                                    Action = reader["Action"],
+                                    ActionDate = reader["ActionDate"]
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error retrieving audit logs for date range: {ex.Message}");
+            }
+
+            return auditLogs;
+        }
+
+        public List<dynamic> GetAllAuditLogs(int limit = 500)
+        {
+            return GetAuditTrail(limit);
         }
 
         public List<dynamic> GetApplicationsByStatus(string status)

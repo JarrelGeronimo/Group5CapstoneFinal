@@ -344,7 +344,7 @@ namespace HRAndApplicantSystem.Forms
             {
                 try
                 {
-                    ReportsForm form = new ReportsForm(_db, _currentUser.Username);
+                    ReportsForm form = new ReportsForm(_db, _currentUser.Username, _currentUser.RoleID);
                     form.ShowDialog(this);
                 }
                 catch (Exception ex)
@@ -354,6 +354,42 @@ namespace HRAndApplicantSystem.Forms
             };
             
             contentPanel.Controls.Add(reportsButton);
+
+            // Audit Logs button (Admin/HR Manager only)
+            Button auditLogsButton = new Button();
+            auditLogsButton.Text = "View Audit Logs";
+            auditLogsButton.Size = new System.Drawing.Size(300, 100);
+            auditLogsButton.BackColor = System.Drawing.Color.FromArgb(220, 100, 20);
+            auditLogsButton.ForeColor = System.Drawing.Color.White;
+            auditLogsButton.Font = new Font("Arial", 12, FontStyle.Bold);
+            auditLogsButton.Cursor = Cursors.Hand;
+            auditLogsButton.Margin = new Padding(10);
+            auditLogsButton.FlatStyle = FlatStyle.Flat;
+
+            // Enable only for Admin (4) or HR Manager (3)
+            if (_currentUser.RoleID == 3 || _currentUser.RoleID == 4)
+            {
+                auditLogsButton.Click += (s, e) =>
+                {
+                    try
+                    {
+                        HRAuditLogForm auditForm = new HRAuditLogForm(_currentUser.RoleID, _currentUser.Username);
+                        auditForm.ShowDialog(this);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error opening audit logs: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                };
+            }
+            else
+            {
+                auditLogsButton.BackColor = System.Drawing.Color.FromArgb(169, 169, 169);
+                auditLogsButton.Enabled = false;
+                auditLogsButton.Click += (s, e) => MessageBox.Show("Only HR Manager or Admin can view audit logs.", "Access Denied", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+
+            contentPanel.Controls.Add(auditLogsButton);
 
             // Logout button
             Button logoutButton = new Button();

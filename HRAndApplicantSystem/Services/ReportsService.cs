@@ -1,5 +1,9 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
+using HRAndApplicantSystem.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -267,6 +271,160 @@ namespace HRAndApplicantSystem.Services
             Console.WriteLine("\n" + new string('=', 50));
             Console.WriteLine("Press any key to return...");
             Console.ReadKey();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // AUDIT REPORT METHODS (for audit trail reporting)
+        // ═══════════════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Generates a comprehensive audit report with statistics
+        /// Only accessible to Admin and HR Manager roles
+        /// </summary>
+        public dynamic GenerateAuditReport(int userRoleID)
+        {
+            // Security check - only Admin and HR Manager can access
+            if (userRoleID != RoleConstants.ADMIN && userRoleID != RoleConstants.HR_MANAGER)
+            {
+                return new { Error = "Access Denied. Only Admin and HR Manager can view audit reports." };
+            }
+
+            try
+            {
+                var auditService = new AuditLogService();
+                var stats = auditService.GetAuditStatistics();
+
+                if (stats == null)
+                {
+                    return new { Error = "No audit data available" };
+                }
+
+                return new
+                {
+                    ReportType = "Audit Trail Report",
+                    GeneratedDate = DateTime.Now,
+                    TotalActions = stats.TotalActions,
+                    UniqueUsers = stats.UniqueUsers,
+                    DateRange = stats.DateRange,
+                    ActionsByRole = stats.ActionsByRole,
+                    RecentActions = auditService.GetRecentAuditLogs(10)
+                };
+            }
+            catch (Exception ex)
+            {
+                return new { Error = $"Failed to generate audit report: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Gets recent critical audit actions (last 20)
+        /// </summary>
+        public List<AuditTrail> GetRecentCriticalAuditActions()
+        {
+            var auditService = new AuditLogService();
+            var recentLogs = auditService.GetRecentAuditLogs(50);
+
+            // Filter for important actions
+            var criticalActions = new[] 
+            { 
+                "Rejected", "Accepted", "Hired", "Decision", "Scheduled",
+                "Changed password", "Changed user information", "Submitted"
+            };
+
+            return recentLogs
+                .Where(log => criticalActions.Any(action => 
+                    log.Action.Contains(action, StringComparison.OrdinalIgnoreCase)))
+                .Take(20)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Gets audit logs grouped by user type with counts
+        /// </summary>
+        public dynamic GetAuditLogsSummaryByRole()
+        {
+            try
+            {
+                var auditService = new AuditLogService();
+                var roleNames = new[] { "Applicant", "HR Staff", "HR Manager", "Administrator" };
+                var summary = new List<dynamic>();
+
+                foreach (var roleName in roleNames)
+                {
+                    var logs = auditService.GetAuditLogsByRole(roleName, 500);
+                    summary.Add(new
+                    {
+                        Role = roleName,
+                        ActionCount = logs.Count,
+                        RecentAction = logs.FirstOrDefault()?.Action,
+                        LastActionDate = logs.FirstOrDefault()?.ActionDate
+                    });
+                }
+
+                return summary;
+            }
+            catch (Exception ex)
+            {
+                return new { Error = $"Failed to get audit summary: {ex.Message}" };
+            }
+        }
+
+        /// <summary>
+        /// Displays audit report in console (for HR Manager/Admin)
+        /// </summary>
+        public void DisplayAuditReport(int userRoleID)
+        {
+            if (userRoleID != RoleConstants.ADMIN && userRoleID != RoleConstants.HR_MANAGER)
+            {
+                Console.WriteLine("Access Denied. Only Admin and HR Manager can view audit reports.");
+                System.Threading.Thread.Sleep(2000);
+                return;
+            }
+
+            try
+            {
+                Console.Clear();
+                Console.WriteLine("╔══════════════════════════════════════════════╗");
+                Console.WriteLine("║     AUDIT TRAIL REPORT                       ║");
+                Console.WriteLine("╚══════════════════════════════════════════════╝\n");
+
+                var report = GenerateAuditReport(userRoleID);
+
+                if (report.Error != null)
+                {
+                    Console.WriteLine($"Error: {report.Error}");
+                    System.Threading.Thread.Sleep(2000);
+                    return;
+                }
+
+                Console.WriteLine($"Generated: {report.GeneratedDate:yyyy-MM-dd HH:mm:ss}\n");
+                Console.WriteLine($"Total Actions: {report.TotalActions}");
+                Console.WriteLine($"Unique Users: {report.UniqueUsers}");
+                Console.WriteLine($"Date Range: {report.DateRange.Earliest:yyyy-MM-dd} to {report.DateRange.Latest:yyyy-MM-dd}");
+
+                Console.WriteLine("\nActions by Role:");
+                Console.WriteLine(new string('-', 50));
+                foreach (var role in (List<dynamic>)report.ActionsByRole)
+                {
+                    Console.WriteLine($"  {role.UserType,-25}: {role.Count,4} actions");
+                }
+
+                Console.WriteLine("\nRecent Critical Actions:");
+                Console.WriteLine(new string('-', 50));
+                foreach (var action in GetRecentCriticalAuditActions().Take(10))
+                {
+                    Console.WriteLine($"  {action.ActionDate:yyyy-MM-dd HH:mm:ss} | {action.Username,-15} | {action.Action}");
+                }
+
+                Console.WriteLine("\n" + new string('=', 50));
+                Console.WriteLine("Press any key to return...");
+                Console.ReadKey();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error displaying audit report: {ex.Message}");
+                System.Threading.Thread.Sleep(2000);
+            }
         }
     }
 }

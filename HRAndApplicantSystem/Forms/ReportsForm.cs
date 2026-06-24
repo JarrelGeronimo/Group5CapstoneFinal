@@ -9,6 +9,7 @@ namespace HRAndApplicantSystem.Forms
     {
         private readonly DatabaseHelper _db;
         private readonly string _username;
+        private readonly int _userRoleID;
         
         private TabControl reportsTabControl;
         private DataGridView applicantListGridView;
@@ -17,10 +18,11 @@ namespace HRAndApplicantSystem.Forms
         private DataGridView acceptedRejectedGridView;
         private DataGridView applicantDocumentsGridView;
 
-        public ReportsForm(DatabaseHelper db, string username)
+        public ReportsForm(DatabaseHelper db, string username, int userRoleID = 0)
         {
             _db = db;
             _username = username;
+            _userRoleID = userRoleID;
             InitializeComponent();
             this.Text = "HR Reports";
             this.Size = new System.Drawing.Size(1400, 800);
@@ -60,6 +62,18 @@ namespace HRAndApplicantSystem.Forms
             printButton.Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold);
             printButton.Click += (s, e) => PrintCurrentTab();
             buttonPanel.Controls.Add(printButton);
+
+            // Audit Logs Button (Admin/HR Manager only)
+            Button auditLogsButton = new Button();
+            auditLogsButton.Text = "📋 Audit Logs";
+            auditLogsButton.Size = new System.Drawing.Size(150, 35);
+            auditLogsButton.Location = new System.Drawing.Point(330, 7);
+            auditLogsButton.BackColor = System.Drawing.Color.DarkOrange;
+            auditLogsButton.ForeColor = System.Drawing.Color.White;
+            auditLogsButton.FlatStyle = FlatStyle.Flat;
+            auditLogsButton.Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold);
+            auditLogsButton.Click += (s, e) => OpenAuditLogsForm();
+            buttonPanel.Controls.Add(auditLogsButton);
 
             this.Controls.Add(buttonPanel);
 
@@ -565,6 +579,22 @@ namespace HRAndApplicantSystem.Forms
             catch (Exception ex)
             {
                 MessageBox.Show($"Print failed: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Opens the Audit Logs form for HR Manager and Admin users
+        /// </summary>
+        private void OpenAuditLogsForm()
+        {
+            try
+            {
+                HRAuditLogForm auditForm = new HRAuditLogForm(_userRoleID, _username);
+                auditForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening audit logs: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

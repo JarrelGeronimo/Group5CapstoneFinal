@@ -1,7 +1,9 @@
 using HRAndApplicantSystem.Database;
 using HRAndApplicantSystem.Infrastructure.Repositories;
+using HRAndApplicantSystem.Models;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace HRAndApplicantSystem.Services
 {
@@ -154,5 +156,185 @@ namespace HRAndApplicantSystem.Services
                 System.Threading.Thread.Sleep(2000);
             }
         }
-    }
+        // ================================================================
+        // DATA-RETURNING METHODS (for UI binding and external use)
+        // ================================================================
+
+        /// <summary>
+        /// Validates if the user role has permission to access audit logs
+        /// Only Admin (4) and HR Manager (3) can access audit logs
+        /// </summary>
+        public bool ValidateAuditLogAccess(int userRoleID)
+        {
+            return userRoleID == RoleConstants.ADMIN || userRoleID == RoleConstants.HR_MANAGER;
+        }
+
+        /// <summary>
+        /// Gets all audit logs with optional row limit
+        /// Converts to typed AuditTrail list for easy UI binding
+        /// </summary>
+        public List<AuditTrail> GetAllAuditLogs(int limit = 500)
+        {
+            var logs = db.GetAllAuditLogs(limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets audit logs for a specific user by UserID
+        /// </summary>
+        public List<AuditTrail> GetAuditLogsByUser(int userID, int limit = 100)
+        {
+            var logs = db.GetAuditLogsByUserID(userID, limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets audit logs filtered by user role/type
+        /// Examples: "Applicant", "HR Staff", "HR Manager", "Administrator"
+        /// </summary>
+        public List<AuditTrail> GetAuditLogsByRole(string userType, int limit = 100)
+        {
+            if (string.IsNullOrWhiteSpace(userType))
+                return new List<AuditTrail>();
+
+            var logs = db.GetAuditLogsByUserType(userType, limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets audit logs for a specific date
+        /// </summary>
+        public List<AuditTrail> GetAuditLogsByDate(DateTime date, int limit = 500)
+        {
+            var logs = db.GetAuditLogsByDateRange(date.Date, date.Date, limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets the most recent audit logs
+        /// </summary>
+        public List<AuditTrail> GetRecentAuditLogs(int limit = 50)
+        {
+            var logs = db.GetAuditTrail(limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets audit logs for a date range
+        /// </summary>
+        public List<AuditTrail> GetAuditLogsByDateRange(DateTime startDate, DateTime endDate, int limit = 500)
+        {
+            if (startDate > endDate)
+            {
+                var temp = startDate;
+                startDate = endDate;
+                endDate = temp;
+            }
+
+            var logs = db.GetAuditLogsByDateRange(startDate, endDate, limit);
+            return ConvertToAuditTrailList(logs);
+        }
+
+        /// <summary>
+        /// Gets audit logs filtered by action keyword
+        /// </summary>
+        public List<AuditTrail> GetAuditLogsByAction(string actionKeyword, int limit = 100)
+        {
+            if (string.IsNullOrWhiteSpace(actionKeyword))
+                return new List<AuditTrail>();
+
+            var allLogs = db.GetAuditTrail(limit * 5); // Get more logs to filter from
+            var filtered = allLogs.Where(log => 
+                log.Action != null && 
+                log.Action.ToString().Contains(actionKeyword, StringComparison.OrdinalIgnoreCase))
+                .Take(limit)
+                .ToList();
+
+            return ConvertToAuditTrailList(filtered);
+        }
+
+        /// <summary>
+        /// Gets summary statistics about audit logs
+        /// </summary>
+        public dynamic GetAuditStatistics()
+        {
+            try
+            {
+                var allLogs = db.GetAuditTrail(5000);
+                if (allLogs.Count == 0)
+                    return null;
+
+                var roleGroups = allLogs
+                    .GroupBy(log => log.UserType)
+                    .Select(g => new { UserType = g.Key, Count = g.Count() })
+                    .ToList();
+
+                var totalActions = allLogs.Count;
+                var uniqueUsers = allLogs.Select(log => log.UserID).Distinct().Count();
+                var dateRange = new
+                {
+                    Earliest = allLogs.Min(log => Convert.ToDateTime(log.ActionDate)),
+                    Latest = allLogs.Max(log => Convert.ToDateTime(log.ActionDate))
+                };
+
+                return new
+                {
+                    TotalActions = totalActions,
+                    UniqueUsers = uniqueUsers,
+                    ActionsByRole = roleGroups,
+                    DateRange = dateRange
+                };
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting audit statistics: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Helper method to convert dynamic audit logs to typed AuditTrail objects
+        /// </summary>
+        private List<AuditTrail> ConvertToAuditTrailList(List<dynamic> dynamicLogs)
+        {
+            var auditTrails = new List<AuditTrail>();
+
+            try
+            {
+                if (dynamicLogs == null || dynamicLogs.Count == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("ConvertToAuditTrailList: No logs to convert");
+                    return auditTrails;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"ConvertToAuditTrailList: Converting {dynamicLogs.Count} logs");
+
+                foreach (var log in dynamicLogs)
+                {
+                    try
+                    {
+                        int auditID = log.AuditID;
+                        string userType = log.UserType?.ToString() ?? "Unknown";
+                        int userID = log.UserID ?? 0;
+                        string username = log.Username?.ToString() ?? "Unknown";
+                        string action = log.Action?.ToString() ?? "Unknown";
+                        DateTime actionDate = Convert.ToDateTime(log.ActionDate);
+
+                        auditTrails.Add(new AuditTrail(auditID, userType, userID, username, action, actionDate));
+                    }
+                    catch (Exception itemEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"Error converting individual audit log: {itemEx.Message}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"ConvertToAuditTrailList: Successfully converted {auditTrails.Count} logs");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error converting audit logs: {ex.Message}");
+            }
+
+            return auditTrails;
+        }    }
 }
